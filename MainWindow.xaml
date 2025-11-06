@@ -301,8 +301,10 @@
                                               HorizontalAlignment="Stretch"
                                               Height="40"
                                               IsEditable="False"
+                                              IsTextSearchEnabled="False"
+                                              StaysOpenOnEdit="True"
                                               SelectionChanged="DeviceComboBox_SelectionChanged"
-                                              TextChanged="DeviceComboBox_TextChanged"/>
+                                              PreviewKeyDown="DeviceComboBox_PreviewKeyDown"/>
                                 </Grid>
                             </Grid>
 
