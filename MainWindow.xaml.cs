@@ -741,10 +741,14 @@ namespace ITTicketingKiosk
         {
             try
             {
-                SettingsDialog dialog = new SettingsDialog
+                SettingsDialog dialog = new SettingsDialog();
+
+                // Only set Owner if the MainWindow is already shown
+                // On first launch during initialization, the MainWindow may not be visible yet
+                if (this.IsLoaded)
                 {
-                    Owner = this
-                };
+                    dialog.Owner = this;
+                }
 
                 // Show the dialog
                 bool? result = dialog.ShowDialog();
