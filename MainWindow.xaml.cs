@@ -687,8 +687,10 @@ namespace ITTicketingKiosk
                 return false;
             }
 
-            // Don't allow "Write In" as the actual device value
-            if (DeviceComboBox.SelectedItem?.ToString() == "Write In" && string.IsNullOrWhiteSpace(DeviceComboBox.Text))
+            // Don't allow "Write In" as the actual device value (either selected or as placeholder text)
+            if (DeviceComboBox.SelectedItem?.ToString() == "Write In" ||
+                DeviceComboBox.Text == "Write In" ||
+                (DeviceComboBox.IsEditable && string.IsNullOrWhiteSpace(DeviceComboBox.Text)))
             {
                 _ = ShowMessageDialog("Missing Information", "Please enter a device name");
                 AddStatusMessage("Device name is required when using Write In", StatusType.Warning);
@@ -696,7 +698,7 @@ namespace ITTicketingKiosk
             }
 
             // If Write In was used, validate minimum 4 characters
-            if (DeviceComboBox.IsEditable && !string.IsNullOrWhiteSpace(DeviceComboBox.Text))
+            if (DeviceComboBox.IsEditable && !string.IsNullOrWhiteSpace(DeviceComboBox.Text) && DeviceComboBox.Text != "Write In")
             {
                 if (DeviceComboBox.Text.Trim().Length < 4)
                 {
@@ -854,22 +856,13 @@ namespace ITTicketingKiosk
             {
                 _isDeviceWriteInMode = true;
                 DeviceComboBox.IsEditable = true;
+                DeviceComboBox.SelectedIndex = -1; // Clear the selection immediately
+                DeviceComboBox.Text = "Write In"; // Keep placeholder text
 
-                // Use Dispatcher to ensure the ComboBox is ready before clearing selection
-                Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    DeviceComboBox.SelectedIndex = -1; // Clear the selection
-                    DeviceComboBox.Text = string.Empty; // Clear the text
-                    DeviceComboBox.Focus(); // Focus so user can type
-                }), System.Windows.Threading.DispatcherPriority.Background);
+                // Focus the ComboBox so user can start typing
+                DeviceComboBox.Focus();
 
                 AddStatusMessage("Enter custom device name", StatusType.Info);
-            }
-            else if (DeviceComboBox.IsEditable && !_isDeviceWriteInMode)
-            {
-                // Only change back to non-editable if it was previously editable
-                // and we're not in write-in mode
-                DeviceComboBox.IsEditable = false;
             }
             else if (DeviceComboBox.SelectedItem != null && _isDeviceWriteInMode)
             {
@@ -877,23 +870,34 @@ namespace ITTicketingKiosk
                 _isDeviceWriteInMode = false;
                 DeviceComboBox.IsEditable = false;
             }
+            else if (!_isDeviceWriteInMode && DeviceComboBox.IsEditable)
+            {
+                // Shouldn't be editable if not in write-in mode
+                DeviceComboBox.IsEditable = false;
+            }
 
             UpdateNavigationButtons();
         }
 
         /// <summary>
-        /// Handle when device ComboBox text changes
+        /// Handle key presses in device ComboBox to clear placeholder text
         /// </summary>
-        private void DeviceComboBox_TextChanged(object sender, TextChangedEventArgs e)
+        private void DeviceComboBox_PreviewKeyDown(object sender, KeyEventArgs e)
         {
-            // If we're in write-in mode and the user starts typing, keep the text
+            // If in write-in mode and the text is still the placeholder "Write In"
             if (_isDeviceWriteInMode && DeviceComboBox.IsEditable)
             {
-                // Prevent the ComboBox from trying to auto-select items while typing
-                if (DeviceComboBox.SelectedItem != null)
+                // Clear placeholder text on first keystroke (except for special keys)
+                if (DeviceComboBox.Text == "Write In" &&
+                    e.Key != Key.Tab &&
+                    e.Key != Key.Escape &&
+                    e.Key != Key.Enter &&
+                    e.Key != Key.Left &&
+                    e.Key != Key.Right &&
+                    e.Key != Key.Up &&
+                    e.Key != Key.Down)
                 {
-                    // If something got selected while typing, clear it
-                    DeviceComboBox.SelectedIndex = -1;
+                    DeviceComboBox.Text = string.Empty;
                 }
             }
         }
