@@ -20,6 +20,7 @@ namespace ITTicketingKiosk
         private int _currentPage = 1;
         private bool _testModeEnabled = false;
         private bool _settingsUnlocked = false;
+        private bool _isDeviceWriteInMode = false;
 
         public MainWindow()
         {
@@ -542,6 +543,8 @@ namespace ITTicketingKiosk
             SchoolAffiliationComboBox.SelectedIndex = -1;
             DeviceComboBox.ItemsSource = null;
             DeviceComboBox.SelectedIndex = -1;
+            DeviceComboBox.IsEditable = false;
+            _isDeviceWriteInMode = false;
             _currentUser = null;
             _currentNinjaUser = null;
             ContinueButton.IsEnabled = false;
@@ -849,19 +852,50 @@ namespace ITTicketingKiosk
             if (DeviceComboBox.SelectedItem != null &&
                 DeviceComboBox.SelectedItem.ToString() == "Write In")
             {
+                _isDeviceWriteInMode = true;
                 DeviceComboBox.IsEditable = true;
-                DeviceComboBox.Text = string.Empty; // Clear the "Write In" text
-                DeviceComboBox.Focus(); // Focus so user can type
+
+                // Use Dispatcher to ensure the ComboBox is ready before clearing selection
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    DeviceComboBox.SelectedIndex = -1; // Clear the selection
+                    DeviceComboBox.Text = string.Empty; // Clear the text
+                    DeviceComboBox.Focus(); // Focus so user can type
+                }), System.Windows.Threading.DispatcherPriority.Background);
+
                 AddStatusMessage("Enter custom device name", StatusType.Info);
             }
-            else if (DeviceComboBox.IsEditable)
+            else if (DeviceComboBox.IsEditable && !_isDeviceWriteInMode)
             {
                 // Only change back to non-editable if it was previously editable
-                // This prevents clearing the selection when switching between normal items
+                // and we're not in write-in mode
+                DeviceComboBox.IsEditable = false;
+            }
+            else if (DeviceComboBox.SelectedItem != null && _isDeviceWriteInMode)
+            {
+                // User selected a different item from the dropdown while in write-in mode
+                _isDeviceWriteInMode = false;
                 DeviceComboBox.IsEditable = false;
             }
 
             UpdateNavigationButtons();
+        }
+
+        /// <summary>
+        /// Handle when device ComboBox text changes
+        /// </summary>
+        private void DeviceComboBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            // If we're in write-in mode and the user starts typing, keep the text
+            if (_isDeviceWriteInMode && DeviceComboBox.IsEditable)
+            {
+                // Prevent the ComboBox from trying to auto-select items while typing
+                if (DeviceComboBox.SelectedItem != null)
+                {
+                    // If something got selected while typing, clear it
+                    DeviceComboBox.SelectedIndex = -1;
+                }
+            }
         }
 
         private void NavigateToPage(int pageNumber)
