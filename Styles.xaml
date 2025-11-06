@@ -187,6 +187,8 @@
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Padding" Value="12,8,12,8"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="HorizontalContentAlignment" Value="Left"/>
         <Setter Property="SelectionBrush" Value="{StaticResource SelectionHighlightBrush}"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -197,8 +199,9 @@
                             BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="4">
                         <ScrollViewer x:Name="PART_ContentHost"
-                                      Margin="{TemplateBinding Padding}"
-                                      VerticalAlignment="Stretch"/>
+                                      Focusable="False"
+                                      HorizontalScrollBarVisibility="Hidden"
+                                      VerticalScrollBarVisibility="Hidden"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -233,6 +236,8 @@
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Padding" Value="12,8,12,8"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="HorizontalContentAlignment" Value="Left"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="PasswordBox">
@@ -242,8 +247,9 @@
                             BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="4">
                         <ScrollViewer x:Name="PART_ContentHost"
-                                      Margin="{TemplateBinding Padding}"
-                                      VerticalAlignment="Stretch"/>
+                                      Focusable="False"
+                                      HorizontalScrollBarVisibility="Hidden"
+                                      VerticalScrollBarVisibility="Hidden"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">

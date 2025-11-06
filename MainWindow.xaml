@@ -182,15 +182,14 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
 
-                                <TextBlock Grid.Column="0" 
-                                           Text="Username:" 
+                                <TextBlock Grid.Column="0"
+                                           Text="Username:"
                                            Style="{StaticResource FieldLabelStyle}"
                                            Margin="0,0,10,0"/>
-                                <TextBox x:Name="UsernameTextBox" 
-                                         Grid.Column="1" 
+                                <TextBox x:Name="UsernameTextBox"
+                                         Grid.Column="1"
                                          Style="{StaticResource StandardTextBoxStyle}"
                                          FontSize="14"
-                                         VerticalAlignment="Center"
                                          Height="40"/>
                                 <Button x:Name="SearchButton" 
                                         Grid.Column="2" 
@@ -348,13 +347,14 @@
                                            Text="Description:" 
                                            Style="{StaticResource FieldLabelStyle}"
                                            Margin="0,0,0,10"/>
-                                <TextBox x:Name="DescriptionTextBox" 
-                                         Grid.Row="1" 
+                                <TextBox x:Name="DescriptionTextBox"
+                                         Grid.Row="1"
                                          Style="{StaticResource StandardTextBoxStyle}"
                                          FontSize="14"
                                          TextWrapping="Wrap"
                                          AcceptsReturn="True"
                                          VerticalScrollBarVisibility="Auto"
+                                         VerticalContentAlignment="Top"
                                          Height="250"/>
                             </Grid>
 
