@@ -1,0 +1,964 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+
+namespace ITTicketingKiosk
+{
+    public partial class MainWindow : Window
+    {
+        private PowerSchoolAPI _psApi;
+        private NinjaOneAPI _ninjaApi;
+        private UserData _currentUser;
+        private NinjaEndUser _currentNinjaUser;
+        private int _currentPage = 1;
+        private bool _testModeEnabled = false;
+        private bool _settingsUnlocked = false;
+
+        public MainWindow()
+        {
+            InitializeComponent();
+            LoadBannerImage();
+
+            // Disable settings button by default
+            SettingsButton.IsEnabled = false;
+
+            // Add keyboard event handler for F1 bypass
+            this.KeyDown += MainWindow_KeyDown;
+
+            // Initialize application - check credentials and authentication
+            _ = InitializeApplicationAsync();
+        }
+
+        /// <summary>
+        /// Initialize application - check credentials and authentication status
+        /// </summary>
+        private async Task InitializeApplicationAsync()
+        {
+            try
+            {
+                // Check if credentials are configured
+                if (!Config.AreCredentialsConfigured())
+                {
+                    AddStatusMessage("Credentials not configured - please enter API credentials", StatusType.Warning);
+                    await ShowSettingsDialogAsync(isRequired: true);
+
+                    // After settings dialog closes, check again
+                    if (!Config.AreCredentialsConfigured())
+                    {
+                        // User still hasn't configured - show error and wait
+                        AddStatusMessage("Application cannot start without credentials", StatusType.Error);
+                        ShowAuthOverlay();
+                        return;
+                    }
+                }
+
+                // Initialize APIs with stored credentials
+                InitializeAPIs();
+
+                // Check authentication status
+                await CheckAuthenticationStatusAsync();
+            }
+            catch (Exception ex)
+            {
+                AddStatusMessage($"Initialization error: {ex.Message}", StatusType.Error);
+                ShowAuthOverlay();
+            }
+        }
+
+        private void MainWindow_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.F1)
+            {
+                _testModeEnabled = !_testModeEnabled;
+
+                // If F1 is disabled, also lock settings
+                if (!_testModeEnabled)
+                {
+                    _settingsUnlocked = false;
+                    SettingsButton.IsEnabled = false;
+                    AddStatusMessage("Test mode disabled - Settings locked", StatusType.Info);
+                }
+                else
+                {
+                    AddStatusMessage("Test mode enabled - Press F12 to unlock settings", StatusType.Info);
+                }
+
+                UpdateNavigationButtons();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.F12 && _testModeEnabled)
+            {
+                _settingsUnlocked = !_settingsUnlocked;
+                SettingsButton.IsEnabled = _settingsUnlocked;
+
+                string status = _settingsUnlocked ? "unlocked" : "locked";
+                AddStatusMessage($"Settings menu {status}", StatusType.Info);
+                e.Handled = true;
+            }
+        }
+
+        private void InitializeAPIs()
+        {
+            try
+            {
+                // Get credentials from Credential Manager
+                string psClientId = Config.GetPowerSchoolClientId();
+                string psClientSecret = Config.GetPowerSchoolClientSecret();
+                string ninjaClientId = Config.GetNinjaOneClientId();
+                string ninjaClientSecret = Config.GetNinjaOneClientSecret();
+
+                // Validate PowerSchool credentials
+                if (string.IsNullOrEmpty(psClientId))
+                {
+                    throw new Exception("PowerSchool Client ID is not configured");
+                }
+                if (string.IsNullOrEmpty(psClientSecret))
+                {
+                    throw new Exception("PowerSchool Client Secret is not configured");
+                }
+
+                // Validate NinjaOne credentials
+                if (string.IsNullOrEmpty(ninjaClientId))
+                {
+                    throw new Exception("NinjaOne Client ID is not configured");
+                }
+                if (string.IsNullOrEmpty(ninjaClientSecret))
+                {
+                    throw new Exception("NinjaOne Client Secret is not configured");
+                }
+
+                // Initialize PowerSchool API
+                AddStatusMessage("Initializing PowerSchool API...", StatusType.Info);
+                _psApi = new PowerSchoolAPI(
+                    Config.PS_BASE_URL,
+                    psClientId,
+                    psClientSecret
+                );
+                AddStatusMessage("PowerSchool API initialized", StatusType.Success);
+
+                // Initialize NinjaOne API
+                AddStatusMessage("Initializing NinjaOne API...", StatusType.Info);
+                _ninjaApi = new NinjaOneAPI(
+                    Config.NINJA_BASE_URL,
+                    ninjaClientId,
+                    ninjaClientSecret,
+                    Config.NINJA_ORGANIZATION_ID
+                );
+                AddStatusMessage("NinjaOne API initialized", StatusType.Success);
+
+                AddStatusMessage("All APIs initialized successfully", StatusType.Success);
+            }
+            catch (Exception ex)
+            {
+                AddStatusMessage($"Failed to initialize APIs: {ex.Message}", StatusType.Error);
+                _psApi = null;
+                _ninjaApi = null;
+                throw; // Re-throw to be caught by caller
+            }
+        }
+
+        /// <summary>
+        /// Check if we have a valid refresh token stored
+        /// </summary>
+        private async Task CheckAuthenticationStatusAsync()
+        {
+            try
+            {
+                // Load refresh token from Windows Credential Manager
+                string refreshToken = CredentialManager.GetNinjaOneRefreshToken();
+
+                if (!string.IsNullOrEmpty(refreshToken))
+                {
+                    _ninjaApi.SetRefreshToken(refreshToken);
+
+                    // Try to use it - make a test API call
+                    try
+                    {
+                        // Attempt a simple lookup to validate token
+                        await _ninjaApi.LookupEndUserAsync("test_validation");
+
+                        // Token is valid
+                        HideAuthOverlay();
+                        AddStatusMessage("Authenticated - Ready to create tickets", StatusType.Success);
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        // Token invalid or expired
+                        AddStatusMessage($"Refresh token invalid: {ex.Message}", StatusType.Warning);
+                        CredentialManager.ClearNinjaOneRefreshToken();
+                    }
+                }
+
+                // No valid refresh token - show auth overlay
+                ShowAuthOverlay();
+                AddStatusMessage("Authentication required to access ticketing system", StatusType.Warning);
+            }
+            catch (Exception ex)
+            {
+                AddStatusMessage($"Error checking authentication: {ex.Message}", StatusType.Error);
+                ShowAuthOverlay();
+            }
+        }
+
+        /// <summary>
+        /// Handle Sign In button click
+        /// </summary>
+        private async void SignInButton_Click(object sender, RoutedEventArgs e)
+        {
+            // If credentials aren't configured, open settings instead
+            if (!Config.AreCredentialsConfigured() || _ninjaApi == null)
+            {
+                AddStatusMessage("Opening settings to configure credentials", StatusType.Info);
+                await ShowSettingsDialogAsync(isRequired: true);
+                return;
+            }
+
+            SignInButton.IsEnabled = false;
+            AuthProgressRing.IsIndeterminate = true;
+            AuthProgressRing.Visibility = Visibility.Visible;
+            AuthStatusText.Text = "Opening browser for authentication...";
+            AuthStatusText.Visibility = Visibility.Visible;
+
+            try
+            {
+                AddStatusMessage("Starting OAuth authentication flow...", StatusType.Info);
+
+                // Start OAuth flow - opens browser and listens for callback
+                string authCode = await _ninjaApi.StartOAuthFlowAsync();
+
+                AuthStatusText.Text = "Exchanging authorization code for tokens...";
+                AddStatusMessage("Authorization code received, exchanging for tokens...", StatusType.Info);
+
+                // Exchange code for access and refresh tokens
+                await _ninjaApi.ExchangeCodeForTokensAsync(authCode);
+
+                // Save refresh token to Windows Credential Manager
+                string refreshToken = _ninjaApi.GetRefreshToken();
+                CredentialManager.SaveNinjaOneRefreshToken(refreshToken);
+
+                AuthStatusText.Text = "Authentication successful!";
+                AddStatusMessage("Successfully authenticated with NinjaOne", StatusType.Success);
+
+                // Hide overlay after short delay
+                await Task.Delay(1000);
+                HideAuthOverlay();
+                AddStatusMessage("Ready to create tickets", StatusType.Info);
+            }
+            catch (TimeoutException)
+            {
+                AuthStatusText.Text = "Authentication timed out. Please try again.";
+                AuthStatusText.Foreground = new SolidColorBrush(Colors.Red);
+                AddStatusMessage("Authentication timed out - user did not complete sign-in", StatusType.Error);
+            }
+            catch (Exception ex)
+            {
+                AuthStatusText.Text = $"Authentication failed: {ex.Message}";
+                AuthStatusText.Foreground = new SolidColorBrush(Colors.Red);
+                AddStatusMessage($"Authentication error: {ex.Message}", StatusType.Error);
+                await ShowMessageDialog("Authentication Error", ex.Message);
+            }
+            finally
+            {
+                SignInButton.IsEnabled = true;
+                AuthProgressRing.IsIndeterminate = false;
+                AuthProgressRing.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void ShowAuthOverlay()
+        {
+            AuthOverlay.Visibility = Visibility.Visible;
+            AuthStatusText.Visibility = Visibility.Collapsed;
+            AuthStatusText.Foreground = (Brush)FindResource("AccentTextBrush");
+
+            // Update description based on credential status
+            if (!Config.AreCredentialsConfigured())
+            {
+                AuthDescriptionText.Text = "API credentials are not configured.\n\nClick the Settings button (⚙️) to enter your PowerSchool and NinjaOne credentials.";
+                SignInButton.Content = "Open Settings";
+            }
+            else
+            {
+                AuthDescriptionText.Text = "Please sign in with your NinjaOne account to access the ticketing system.\n\nYour browser will open for authentication.";
+                SignInButton.Content = "Sign In";
+            }
+        }
+
+        private void HideAuthOverlay()
+        {
+            AuthOverlay.Visibility = Visibility.Collapsed;
+        }
+
+        private void LoadBannerImage()
+        {
+            try
+            {
+                string appPath = AppContext.BaseDirectory;
+                string imagePath = Path.Combine(appPath, "Assets", "sugar_salem_technology_banner.png");
+
+                if (File.Exists(imagePath))
+                {
+                    var bitmap = new BitmapImage(new Uri(imagePath));
+                    BannerImage.Source = bitmap;
+                }
+                else
+                {
+                    // Image not found, use fallback
+                    throw new FileNotFoundException($"Image not found at: {imagePath}");
+                }
+            }
+            catch (Exception ex)
+            {
+                // Use fallback text if image not found
+                System.Diagnostics.Debug.WriteLine($"Failed to load banner image: {ex.Message}");
+                BannerImage.Visibility = Visibility.Collapsed;
+                FallbackBanner.Visibility = Visibility.Visible;
+            }
+        }
+
+        private async void SearchButton_Click(object sender, RoutedEventArgs e)
+        {
+            string username = UsernameTextBox.Text.Trim();
+
+            if (string.IsNullOrEmpty(username))
+            {
+                await ShowMessageDialog("Input Required", "Please enter a username");
+                AddStatusMessage("Please enter a username", StatusType.Warning);
+                return;
+            }
+
+            SearchButton.IsEnabled = false;
+            AddStatusMessage($"Searching for user: {username}...", StatusType.Info);
+
+            try
+            {
+                // Query PowerSchool for device information
+                AddStatusMessage("Querying PowerSchool for devices...", StatusType.Info);
+                _currentUser = await _psApi.LookupDevicesAsync(username);
+
+                // Query NinjaOne for user name and email
+                AddStatusMessage("Querying NinjaOne for user details...", StatusType.Info);
+                _currentNinjaUser = await _ninjaApi.LookupEndUserAsync(username);
+
+                // Debug logging for NinjaOne lookup
+                if (_currentNinjaUser != null)
+                {
+                    AddStatusMessage($"Found NinjaOne user: {_currentNinjaUser.FullName} ({_currentNinjaUser.Email})", StatusType.Success);
+                }
+                else
+                {
+                    AddStatusMessage($"NinjaOne user not found for username: '{username}'", StatusType.Warning);
+                }
+
+                // Check if we found the user in at least one system
+                if (_currentUser != null || _currentNinjaUser != null)
+                {
+                    PopulateUserInfo();
+                    ContinueButton.IsEnabled = true;
+                    UpdateNavigationButtons();
+
+                    // Log what we found
+                    if (_currentUser != null && _currentNinjaUser != null)
+                    {
+                        AddStatusMessage($"User found in both PowerSchool and NinjaOne", StatusType.Success);
+                    }
+                    else if (_currentUser != null)
+                    {
+                        AddStatusMessage($"User found in PowerSchool only (devices available)", StatusType.Warning);
+                    }
+                    else
+                    {
+                        AddStatusMessage($"User found in NinjaOne only (no devices from PowerSchool)", StatusType.Warning);
+                    }
+                }
+                else
+                {
+                    await ShowMessageDialog("Not Found", "User not found in PowerSchool or NinjaOne. Please check the username.");
+                    AddStatusMessage($"User '{username}' not found in either system", StatusType.Error);
+                    ClearUserInfo();
+                    ContinueButton.IsEnabled = false;
+                    UpdateNavigationButtons();
+                }
+            }
+            catch (Exception ex)
+            {
+                await ShowMessageDialog("Error", $"Failed to search:\n{ex.Message}");
+                AddStatusMessage($"Error during search: {ex.Message}", StatusType.Error);
+                ClearUserInfo();
+            }
+            finally
+            {
+                SearchButton.IsEnabled = true;
+            }
+        }
+
+        private void PopulateUserInfo()
+        {
+            // Populate name and email from NinjaOne if available
+            if (_currentNinjaUser != null)
+            {
+                NameLabel.Text = _currentNinjaUser.FullName;
+                EmailLabel.Text = _currentNinjaUser.Email;
+            }
+            else
+            {
+                // Fallback to username if NinjaOne data not available
+                NameLabel.Text = _currentUser?.Username ?? "Unknown";
+                EmailLabel.Text = "Not found in NinjaOne";
+            }
+
+            // Populate School Affiliation dropdown
+            bool hasValidSchools = _currentUser != null &&
+                                    _currentUser.SchoolIds != null &&
+                                    _currentUser.SchoolIds.Any() &&
+                                    !(_currentUser.SchoolIds.Count == 1 && _currentUser.SchoolIds[0] == "0");
+
+            if (hasValidSchools)
+            {
+                // User has valid school(s) from PowerSchool - filter out "0" if present
+                var schoolNames = _currentUser.SchoolIds
+                    .Where(id => id != "0")  // Filter out "0"
+                    .Select(GetSchoolName)
+                    .ToList();
+
+                // If filtering removed all schools, treat as no valid schools
+                if (schoolNames.Any())
+                {
+                    SchoolAffiliationComboBox.ItemsSource = schoolNames;
+
+                    // Select first school by default
+                    SchoolAffiliationComboBox.SelectedIndex = 0;
+
+                    if (schoolNames.Count > 1)
+                    {
+                        AddStatusMessage($"User affiliated with {schoolNames.Count} schools: {string.Join(", ", schoolNames)}", StatusType.Info);
+                    }
+                }
+                else
+                {
+                    // All schools were "0" - show full list
+                    ShowAllSchoolOptions();
+                }
+            }
+            else
+            {
+                // School is "0" or not found - provide all school options for user to select
+                ShowAllSchoolOptions();
+            }
+
+            // Populate devices from PowerSchool
+            var deviceList = new List<string>();
+
+            // Add devices from PowerSchool if available
+            if (_currentUser != null && _currentUser.Devices != null && _currentUser.Devices.Any())
+            {
+                deviceList.AddRange(_currentUser.Devices);
+
+                string userTypeDisplay = _currentUser.UserType switch
+                {
+                    "students" => "student",
+                    "teachers" => "teacher",
+                    "users" => "user",
+                    _ => "user"
+                };
+
+                AddStatusMessage($"Found {_currentUser.Devices.Count} device(s) for {userTypeDisplay} '{_currentUser.Username}'", StatusType.Success);
+            }
+            else
+            {
+                AddStatusMessage("No devices found in PowerSchool", StatusType.Warning);
+            }
+
+            // Always add "Other" and "Write In" options
+            deviceList.Add("Other");
+            deviceList.Add("Write In");
+
+            DeviceComboBox.ItemsSource = deviceList;
+
+            // Select first device if available, otherwise select "Other"
+            if (_currentUser != null && _currentUser.Devices != null && _currentUser.Devices.Any())
+            {
+                DeviceComboBox.SelectedIndex = 0;
+            }
+            else
+            {
+                // Select "Other" by default if no devices
+                DeviceComboBox.SelectedIndex = deviceList.Count - 2; // "Other" is second to last
+            }
+
+            // Update navigation buttons now that fields are populated
+            UpdateNavigationButtons();
+        }
+
+        private string GetSchoolName(string schoolId)
+        {
+            // Map school IDs to school names
+            return schoolId switch
+            {
+                "147" => "SSHS - High School",
+                "226" => "SSJHS - Junior High",
+                "781" => "CES - Central Elementary",
+                "225" => "KIS - Kershaw",
+                "874" => "VVHS - Valley View",
+                "1483" => "SSO - Online",
+                _ => schoolId  // Just return the school ID number without "School ID:" prefix
+            };
+        }
+
+        /// <summary>
+        /// Show all available school options in the dropdown (when user's school is unknown)
+        /// </summary>
+        private void ShowAllSchoolOptions()
+        {
+            var allSchools = new List<string>
+            {
+                "SSHS",    // 147
+                "SSJHS",   // 226
+                "CES",     // 781
+                "KIS",     // 225
+                "VVHS",    // 874
+                "SSO"      // 1483
+            };
+
+            SchoolAffiliationComboBox.ItemsSource = allSchools;
+            SchoolAffiliationComboBox.SelectedIndex = -1; // No default selection - user must choose
+
+            AddStatusMessage("School affiliation not found - please select your school", StatusType.Warning);
+        }
+
+        private void ClearUserInfo()
+        {
+            NameLabel.Text = string.Empty;
+            EmailLabel.Text = string.Empty;
+            SchoolAffiliationComboBox.ItemsSource = null;
+            SchoolAffiliationComboBox.SelectedIndex = -1;
+            DeviceComboBox.ItemsSource = null;
+            DeviceComboBox.SelectedIndex = -1;
+            _currentUser = null;
+            _currentNinjaUser = null;
+            ContinueButton.IsEnabled = false;
+            UpdateNavigationButtons();
+        }
+
+        private async void SubmitButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!ValidateForm())
+                return;
+
+            // Disable button immediately to prevent double-submission
+            SubmitButton.IsEnabled = false;
+            AddStatusMessage("Submitting ticket...", StatusType.Info);
+
+            try
+            {
+                // Ensure we have a requester UID from NinjaOne
+                if (_currentNinjaUser == null || string.IsNullOrEmpty(_currentNinjaUser.Uid))
+                {
+                    throw new Exception("No NinjaOne user information available. User must exist in NinjaOne to create tickets.");
+                }
+
+                // Get device - handle both selected item and custom text entry
+                string deviceValue = string.Empty;
+                if (DeviceComboBox.SelectedItem != null)
+                {
+                    deviceValue = DeviceComboBox.SelectedItem.ToString();
+                }
+                else if (!string.IsNullOrWhiteSpace(DeviceComboBox.Text))
+                {
+                    // User typed custom device name
+                    deviceValue = DeviceComboBox.Text.Trim();
+                }
+
+                // Get selected school affiliation
+                string schoolAffiliation = string.Empty;
+                if (SchoolAffiliationComboBox.SelectedItem != null)
+                {
+                    schoolAffiliation = SchoolAffiliationComboBox.SelectedItem.ToString();
+                }
+
+                // Description is just the user's text - no prefixes needed
+                string description = DescriptionTextBox.Text.Trim();
+
+                // Create ticket using proper API structure with custom fields
+                var ticket = await _ninjaApi.CreateTicketAsync(
+                    subject: SubjectTextBox.Text.Trim(),
+                    body: description,
+                    requesterUid: _currentNinjaUser.Uid,
+                    requesterName: _currentNinjaUser.FullName,
+                    requesterEmail: _currentNinjaUser.Email,
+                    schoolAffiliation: schoolAffiliation,
+                    deviceName: deviceValue,
+                    studentNumber: _currentUser?.StudentNumber,
+                    teacherNumber: _currentUser?.TeacherNumber
+                );
+
+                string ticketId = ticket.ContainsKey("id") ? ticket["id"].ToString() : "N/A";
+                await ShowMessageDialog("Success", $"Ticket created successfully!\nTicket ID: {ticketId}");
+                AddStatusMessage($"Ticket #{ticketId} created successfully for {_currentNinjaUser.FullName}", StatusType.Success);
+
+                ResetForm();
+                // Button will be re-enabled when user fills out the form again and navigates to page 2
+            }
+            catch (Exception ex)
+            {
+                // Re-enable button on error so user can retry
+                SubmitButton.IsEnabled = true;
+
+                // Check if it's an authentication error
+                if (ex.Message.Contains("refresh access token") || ex.Message.Contains("Please sign in again"))
+                {
+                    await ShowMessageDialog("Session Expired", "Your session has expired. Please sign in again.");
+                    ShowAuthOverlay();
+                    AddStatusMessage("Session expired - authentication required", StatusType.Warning);
+                }
+                else
+                {
+                    await ShowMessageDialog("Error", $"Failed to submit ticket:\n{ex.Message}");
+                    AddStatusMessage($"Error submitting ticket: {ex.Message}", StatusType.Error);
+                }
+            }
+        }
+
+        private bool ValidateForm()
+        {
+            // In test mode, skip user validation to allow testing page 2
+            // Check if user exists in either PowerSchool OR NinjaOne
+            if (_currentUser == null && _currentNinjaUser == null && !_testModeEnabled)
+            {
+                _ = ShowMessageDialog("Missing Information", "Please search for a user first");
+                AddStatusMessage("Please search for a user before submitting", StatusType.Warning);
+                return false;
+            }
+
+            // School affiliation validation - require selection if not auto-selected
+            if (SchoolAffiliationComboBox.SelectedItem == null)
+            {
+                _ = ShowMessageDialog("Missing Information", "Please select your school affiliation");
+                AddStatusMessage("School affiliation is required", StatusType.Warning);
+                return false;
+            }
+
+            // Subject validation - minimum 4 characters
+            if (string.IsNullOrWhiteSpace(SubjectTextBox.Text))
+            {
+                _ = ShowMessageDialog("Missing Information", "Please enter a subject");
+                AddStatusMessage("Subject is required", StatusType.Warning);
+                return false;
+            }
+
+            if (SubjectTextBox.Text.Trim().Length < 4)
+            {
+                _ = ShowMessageDialog("Subject Too Short", "Subject must be at least 4 characters long");
+                AddStatusMessage("Subject must be at least 4 characters", StatusType.Warning);
+                return false;
+            }
+
+            // Description validation - minimum 4 characters
+            if (string.IsNullOrWhiteSpace(DescriptionTextBox.Text))
+            {
+                _ = ShowMessageDialog("Missing Information", "Please enter a description");
+                AddStatusMessage("Description is required", StatusType.Warning);
+                return false;
+            }
+
+            if (DescriptionTextBox.Text.Trim().Length < 4)
+            {
+                _ = ShowMessageDialog("Description Too Short", "Description must be at least 4 characters long");
+                AddStatusMessage("Description must be at least 4 characters", StatusType.Warning);
+                return false;
+            }
+
+            // Device validation - accept either selected item OR custom text entry (if Write In was selected)
+            if (DeviceComboBox.SelectedItem == null && string.IsNullOrWhiteSpace(DeviceComboBox.Text) && !_testModeEnabled)
+            {
+                _ = ShowMessageDialog("Missing Information", "Please select or enter a device");
+                AddStatusMessage("Device selection is required", StatusType.Warning);
+                return false;
+            }
+
+            // Don't allow "Write In" as the actual device value
+            if (DeviceComboBox.SelectedItem?.ToString() == "Write In" && string.IsNullOrWhiteSpace(DeviceComboBox.Text))
+            {
+                _ = ShowMessageDialog("Missing Information", "Please enter a device name");
+                AddStatusMessage("Device name is required when using Write In", StatusType.Warning);
+                return false;
+            }
+
+            // If Write In was used, validate minimum 4 characters
+            if (DeviceComboBox.IsEditable && !string.IsNullOrWhiteSpace(DeviceComboBox.Text))
+            {
+                if (DeviceComboBox.Text.Trim().Length < 4)
+                {
+                    _ = ShowMessageDialog("Device Name Too Short", "Device name must be at least 4 characters long");
+                    AddStatusMessage("Device name must be at least 4 characters", StatusType.Warning);
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private void ResetForm()
+        {
+            UsernameTextBox.Text = string.Empty;
+            SubjectTextBox.Text = string.Empty;
+            DescriptionTextBox.Text = string.Empty;
+            ClearUserInfo();
+            NavigateToPage(1);
+            AddStatusMessage("Form reset - Ready for next ticket", StatusType.Info);
+        }
+
+        private void ResetButton_Click(object sender, RoutedEventArgs e)
+        {
+            ResetForm();
+        }
+
+        /// <summary>
+        /// Settings button click handler
+        /// </summary>
+        private async void SettingsButton_Click(object sender, RoutedEventArgs e)
+        {
+            await ShowSettingsDialogAsync(isRequired: false);
+        }
+
+        /// <summary>
+        /// Show settings dialog for credential configuration
+        /// </summary>
+        private async Task ShowSettingsDialogAsync(bool isRequired)
+        {
+            try
+            {
+                SettingsDialog dialog = new SettingsDialog
+                {
+                    Owner = this
+                };
+
+                // Show the dialog
+                bool? result = dialog.ShowDialog();
+
+                if (result == true)
+                {
+                    // Credentials were saved
+                    AddStatusMessage("Credentials saved to Windows Credential Manager", StatusType.Success);
+
+                    // Re-initialize APIs with new credentials
+                    try
+                    {
+                        AddStatusMessage("Re-initializing APIs with new credentials...", StatusType.Info);
+                        InitializeAPIs();
+
+                        // Check auth status after initialization
+                        await CheckAuthenticationStatusAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        string errorDetails = $"Failed to initialize APIs:\n\n{ex.Message}";
+
+                        // Add inner exception details if available
+                        if (ex.InnerException != null)
+                        {
+                            errorDetails += $"\n\nInner Exception: {ex.InnerException.Message}";
+                        }
+
+                        AddStatusMessage($"Initialization failed: {ex.Message}", StatusType.Error);
+
+                        await ShowMessageDialog("Initialization Error", errorDetails);
+
+                        // If this was required setup and failed, show guidance
+                        if (isRequired)
+                        {
+                            var retryResult = MessageBox.Show(
+                                "API initialization failed. Please verify:\n\n" +
+                                "1. Credentials are correct\n" +
+                                "2. Organization ID is correct\n" +
+                                "3. Network connection is available\n\n" +
+                                "Would you like to try again?",
+                                "Setup Failed",
+                                MessageBoxButton.YesNo,
+                                MessageBoxImage.Warning);
+
+                            if (retryResult == MessageBoxResult.Yes)
+                            {
+                                await ShowSettingsDialogAsync(isRequired: true);
+                            }
+                        }
+                    }
+                }
+                else if (isRequired)
+                {
+                    // User cancelled during required setup - show warning and try again
+                    await ShowMessageDialog("Setup Required", "Credentials are required to use this application. Please configure your API credentials.");
+                    await ShowSettingsDialogAsync(isRequired: true);
+                }
+            }
+            catch (Exception ex)
+            {
+                AddStatusMessage($"Error showing settings dialog: {ex.Message}", StatusType.Error);
+
+                // If settings dialog fails to show during required setup, we're stuck
+                if (isRequired)
+                {
+                    await ShowMessageDialog("Critical Error", $"Failed to display settings dialog: {ex.Message}\n\nThe application cannot continue without credentials.");
+                }
+            }
+        }
+
+        private void BackButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_currentPage > 1)
+            {
+                NavigateToPage(_currentPage - 1);
+            }
+        }
+
+        private void ForwardButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_currentPage < 2)
+            {
+                NavigateToPage(_currentPage + 1);
+            }
+        }
+
+        private void ContinueButton_Click(object sender, RoutedEventArgs e)
+        {
+            NavigateToPage(2);
+        }
+
+        /// <summary>
+        /// Handle when school selection changes
+        /// </summary>
+        private void SchoolAffiliationComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            UpdateNavigationButtons();
+        }
+
+        /// <summary>
+        /// Handle when device selection changes
+        /// </summary>
+        private void DeviceComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            // If "Write In" is selected, make the ComboBox editable
+            if (DeviceComboBox.SelectedItem != null &&
+                DeviceComboBox.SelectedItem.ToString() == "Write In")
+            {
+                DeviceComboBox.IsEditable = true;
+                DeviceComboBox.Text = string.Empty; // Clear the "Write In" text
+                DeviceComboBox.Focus(); // Focus so user can type
+                AddStatusMessage("Enter custom device name", StatusType.Info);
+            }
+            else if (DeviceComboBox.IsEditable)
+            {
+                // Only change back to non-editable if it was previously editable
+                // This prevents clearing the selection when switching between normal items
+                DeviceComboBox.IsEditable = false;
+            }
+
+            UpdateNavigationButtons();
+        }
+
+        private void NavigateToPage(int pageNumber)
+        {
+            _currentPage = pageNumber;
+
+            if (_currentPage == 1)
+            {
+                Page1Content.Visibility = Visibility.Visible;
+                Page2Content.Visibility = Visibility.Collapsed;
+            }
+            else if (_currentPage == 2)
+            {
+                Page1Content.Visibility = Visibility.Collapsed;
+                Page2Content.Visibility = Visibility.Visible;
+
+                // Re-enable submit button when navigating to page 2
+                SubmitButton.IsEnabled = true;
+            }
+
+            UpdateNavigationButtons();
+        }
+
+        private void UpdateNavigationButtons()
+        {
+            BackButton.IsEnabled = _currentPage > 1;
+
+            // Forward button only enabled if on page 1 and required fields are filled
+            if (_currentPage == 1)
+            {
+                // Enable Continue button if:
+                // 1. School is selected AND
+                // 2. Device is selected or entered
+                // OR test mode is enabled
+
+                bool schoolSelected = SchoolAffiliationComboBox.SelectedItem != null;
+                bool deviceSelected = DeviceComboBox.SelectedItem != null || !string.IsNullOrWhiteSpace(DeviceComboBox.Text);
+
+                bool canContinue = (schoolSelected && deviceSelected) || _testModeEnabled;
+
+                ForwardButton.IsEnabled = canContinue;
+                ContinueButton.IsEnabled = canContinue;
+            }
+            else
+            {
+                ForwardButton.IsEnabled = false;
+            }
+        }
+
+        private void AddStatusMessage(string message, StatusType type)
+        {
+            string icon = type switch
+            {
+                StatusType.Info => "ℹ️",
+                StatusType.Success => "✅",
+                StatusType.Warning => "⚠️",
+                StatusType.Error => "❌",
+                _ => "ℹ️"
+            };
+
+            string timestamp = DateTime.Now.ToString("HH:mm:ss");
+            string formatted = $"[{timestamp}] {icon} {message}\n\n";
+
+            StatusTextBlock.Text += formatted;
+
+            // Scroll to bottom to show latest message
+            StatusScrollViewer.ScrollToEnd();
+        }
+
+        private async Task ShowMessageDialog(string title, string content)
+        {
+            await Dispatcher.InvokeAsync(() =>
+            {
+                MessageBox.Show(content, title, MessageBoxButton.OK, MessageBoxImage.Information);
+            });
+        }
+
+        private enum StatusType
+        {
+            Info,
+            Success,
+            Warning,
+            Error
+        }
+    }
+
+    // Data Models
+    /// <summary>
+    /// Represents user data retrieved from PowerSchool including devices and identifiers
+    /// </summary>
+    public class UserData
+    {
+        public string Username { get; set; }
+        public List<string> SchoolIds { get; set; } // Support multiple school affiliations
+        public string StudentNumber { get; set; }
+        public string TeacherNumber { get; set; }
+        public List<string> Devices { get; set; }
+        public string UserType { get; set; } // "students", "teachers", or "users"
+    }
+}
