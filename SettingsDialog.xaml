@@ -4,7 +4,8 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="Application Settings"
     Width="650"
-    Height="700"
+    MaxHeight="700"
+    SizeToContent="Height"
     WindowStartupLocation="CenterOwner"
     Background="White"
     ResizeMode="NoResize">
