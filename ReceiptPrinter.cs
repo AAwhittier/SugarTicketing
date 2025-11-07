@@ -20,6 +20,7 @@ namespace ITTicketingKiosk
         private class PrintData
         {
             public string TicketNumber { get; set; }
+            public string Device { get; set; }
             public string Subject { get; set; }
             public string Timestamp { get; set; }
         }
@@ -36,9 +37,10 @@ namespace ITTicketingKiosk
         /// Print a ticket receipt to the receipt printer
         /// </summary>
         /// <param name="ticketNumber">The ticket number to print</param>
+        /// <param name="device">The device name/number</param>
         /// <param name="subject">The ticket subject</param>
         /// <returns>True if print was successful, false otherwise</returns>
-        public static bool PrintTicketNumber(string ticketNumber, string subject)
+        public static bool PrintTicketNumber(string ticketNumber, string device, string subject)
         {
             if (!IsEnabled())
             {
@@ -51,6 +53,7 @@ namespace ITTicketingKiosk
             {
                 // Store data for printing in thread-local storage
                 _printData.Value.TicketNumber = ticketNumber;
+                _printData.Value.Device = device ?? "Not specified";
                 _printData.Value.Subject = subject;
                 _printData.Value.Timestamp = DateTime.Now.ToString("MM/dd/yyyy hh:mm tt");
 
@@ -178,6 +181,15 @@ namespace ITTicketingKiosk
                     SizeF ticketSize = e.Graphics.MeasureString(ticketText, ticketFont);
                     e.Graphics.DrawString(ticketText, ticketFont, printBrush, centerX - (ticketSize.Width / 2), yPos);
                     yPos += ticketSize.Height + TEXT_SPACING;
+                }
+
+                // Print device (bold, 16pt, same as ticket)
+                using (Font deviceFont = new Font("Arial", 16, FontStyle.Bold))
+                {
+                    string deviceText = $"Device: {data.Device}";
+                    SizeF deviceSize = e.Graphics.MeasureString(deviceText, deviceFont);
+                    e.Graphics.DrawString(deviceText, deviceFont, printBrush, centerX - (deviceSize.Width / 2), yPos);
+                    yPos += deviceSize.Height + TEXT_SPACING;
                 }
 
                 // Print subject (regular, 12pt, centered)
