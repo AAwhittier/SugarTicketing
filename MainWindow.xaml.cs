@@ -610,8 +610,8 @@ namespace ITTicketingKiosk
                 // Print ticket receipt if enabled
                 if (ReceiptPrinter.IsEnabled())
                 {
-                    string deviceValue = DeviceComboBox.SelectedItem?.ToString() ?? "Not specified";
-                    bool printSuccess = ReceiptPrinter.PrintTicketNumber(ticketId, deviceValue, SubjectTextBox.Text.Trim());
+                    string deviceForPrint = DeviceComboBox.SelectedItem?.ToString() ?? "Not specified";
+                    bool printSuccess = ReceiptPrinter.PrintTicketNumber(ticketId, deviceForPrint, SubjectTextBox.Text.Trim());
                     if (printSuccess)
                     {
                         AddStatusMessage($"Ticket receipt printed", StatusType.Success);
