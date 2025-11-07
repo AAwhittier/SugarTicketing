@@ -412,76 +412,93 @@
                     CornerRadius="12"
                     Padding="40"
                     MaxWidth="500"
-                    MaxHeight="400"
+                    MaxHeight="500"
                     VerticalAlignment="Center"
                     HorizontalAlignment="Center">
-                <StackPanel>
-                    <!-- Lock Icon -->
-                    <TextBlock FontFamily="Segoe MDL2 Assets" 
-                              Text="&#xE72E;" 
-                              FontSize="64"
-                              Foreground="{StaticResource AccentTextBrush}"
-                              HorizontalAlignment="Center"
-                              Margin="0,0,0,20"/>
+                <Grid>
+                    <!-- Settings Button (Top Right Corner) -->
+                    <Button x:Name="AuthSettingsButton"
+                            Click="SettingsButton_Click"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            VerticalAlignment="Top"
+                            HorizontalAlignment="Right"
+                            Padding="10,8,10,8"
+                            Margin="-30,-30,0,0"
+                            ToolTip="Settings">
+                        <TextBlock FontFamily="Segoe MDL2 Assets"
+                                  Text="&#xE713;"
+                                  FontSize="16"/>
+                    </Button>
 
-                    <!-- Title -->
-                    <TextBlock Text="Authentication Required" 
-                               FontSize="24" 
-                               FontWeight="Bold"
-                               Foreground="{StaticResource PrimaryTextBrush}"
-                               HorizontalAlignment="Center"
-                               Margin="0,0,0,20"/>
-
-                    <!-- Description -->
-                    <TextBlock x:Name="AuthDescriptionText"
-                               TextWrapping="Wrap"
-                               FontSize="14"
-                               Foreground="{StaticResource SecondaryTextBrush}"
-                               HorizontalAlignment="Center"
-                               TextAlignment="Center"
-                               MaxWidth="350"
-                               Margin="0,0,0,20">
-                        <Run Text="Please sign in with your NinjaOne account to access the ticketing system."/>
-                        <LineBreak/>
-                        <LineBreak/>
-                        <Run Text="Your browser will open for authentication."/>
-                    </TextBlock>
-
-                    <!-- Status Text -->
-                    <TextBlock x:Name="AuthStatusText" 
-                               FontSize="13"
-                               Foreground="{StaticResource AccentTextBrush}"
-                               HorizontalAlignment="Center"
-                               TextAlignment="Center"
-                               Visibility="Collapsed"
-                               Margin="0,0,0,20"/>
-
-                    <!-- Progress Ring (WPF doesn't have ProgressRing, using ProgressBar) -->
-                    <ProgressBar x:Name="AuthProgressRing"
-                                  Width="200"
-                                  Height="20"
-                                  IsIndeterminate="False"
+                    <!-- Main Content -->
+                    <StackPanel>
+                        <!-- Lock Icon -->
+                        <TextBlock FontFamily="Segoe MDL2 Assets"
+                                  Text="&#xE72E;"
+                                  FontSize="64"
+                                  Foreground="{StaticResource AccentTextBrush}"
                                   HorizontalAlignment="Center"
-                                  Visibility="Collapsed"
                                   Margin="0,0,0,20"/>
 
-                    <!-- Sign In Button -->
-                    <Button x:Name="SignInButton"
-                            Content="Sign In"
-                            Click="SignInButton_Click"
-                            Style="{StaticResource SubmitButtonStyle}"
-                            HorizontalAlignment="Center"
-                            Padding="50,12,50,12"
-                            FontSize="18"
-                            Margin="0,0,0,20"/>
+                        <!-- Title -->
+                        <TextBlock Text="Authentication Required"
+                                   FontSize="24"
+                                   FontWeight="Bold"
+                                   Foreground="{StaticResource PrimaryTextBrush}"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,0,0,20"/>
 
-                    <!-- Refresh Token Status -->
-                    <TextBlock x:Name="TokenExpiryText"
-                               FontSize="11"
-                               Foreground="{StaticResource SecondaryTextBrush}"
-                               HorizontalAlignment="Center"
-                               Visibility="Collapsed"/>
-                </StackPanel>
+                        <!-- Description -->
+                        <TextBlock x:Name="AuthDescriptionText"
+                                   TextWrapping="Wrap"
+                                   FontSize="14"
+                                   Foreground="{StaticResource SecondaryTextBrush}"
+                                   HorizontalAlignment="Center"
+                                   TextAlignment="Center"
+                                   MaxWidth="350"
+                                   Margin="0,0,0,20">
+                            <Run Text="Please sign in with your NinjaOne account to access the ticketing system."/>
+                            <LineBreak/>
+                            <LineBreak/>
+                            <Run Text="Your browser will open for authentication."/>
+                        </TextBlock>
+
+                        <!-- Status Text -->
+                        <TextBlock x:Name="AuthStatusText"
+                                   FontSize="13"
+                                   Foreground="{StaticResource AccentTextBrush}"
+                                   HorizontalAlignment="Center"
+                                   TextAlignment="Center"
+                                   Visibility="Collapsed"
+                                   Margin="0,0,0,20"/>
+
+                        <!-- Progress Ring (WPF doesn't have ProgressRing, using ProgressBar) -->
+                        <ProgressBar x:Name="AuthProgressRing"
+                                      Width="200"
+                                      Height="20"
+                                      IsIndeterminate="False"
+                                      HorizontalAlignment="Center"
+                                      Visibility="Collapsed"
+                                      Margin="0,0,0,20"/>
+
+                        <!-- Sign In Button -->
+                        <Button x:Name="SignInButton"
+                                Content="Sign In"
+                                Click="SignInButton_Click"
+                                Style="{StaticResource SubmitButtonStyle}"
+                                HorizontalAlignment="Center"
+                                Padding="50,12,50,12"
+                                FontSize="18"
+                                Margin="0,0,0,20"/>
+
+                        <!-- Refresh Token Status -->
+                        <TextBlock x:Name="TokenExpiryText"
+                                   FontSize="11"
+                                   Foreground="{StaticResource SecondaryTextBrush}"
+                                   HorizontalAlignment="Center"
+                                   Visibility="Collapsed"/>
+                    </StackPanel>
+                </Grid>
             </Border>
         </Grid>
     </Grid>
