@@ -119,6 +119,41 @@ namespace ITTicketingKiosk
                 float centerX = e.PageBounds.Width / 2;
                 Brush printBrush = Brushes.Black;
 
+                // Try to load and print the image first (at the top)
+                try
+                {
+                    string appPath = AppDomain.CurrentDomain.BaseDirectory;
+                    string imagePath = System.IO.Path.Combine(appPath, "Assets", "printer_image.png");
+
+                    if (System.IO.File.Exists(imagePath))
+                    {
+                        using (Image img = Image.FromFile(imagePath))
+                        {
+                            // Scale image to fit width (max 200px wide)
+                            float maxImageWidth = 200;
+                            float scale = Math.Min(1.0f, maxImageWidth / img.Width);
+                            float imageWidth = img.Width * scale;
+                            float imageHeight = img.Height * scale;
+
+                            // Center the image
+                            float imageX = centerX - (imageWidth / 2);
+
+                            // Draw the image
+                            e.Graphics.DrawImage(img, imageX, yPos, imageWidth, imageHeight);
+                            yPos += imageHeight + 15; // Move down with 15px spacing after image
+                        }
+                        System.Diagnostics.Debug.WriteLine("[ReceiptPrinter] Image printed successfully");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[ReceiptPrinter] Image not found at: {imagePath}");
+                    }
+                }
+                catch (Exception imgEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ReceiptPrinter] Error loading image: {imgEx.Message}");
+                }
+
                 // Print ticket number (bold, 16pt)
                 Font ticketFont = new Font("Arial", 16, FontStyle.Bold);
                 string ticketText = $"Ticket: {_ticketNumber}";
@@ -150,41 +185,6 @@ namespace ITTicketingKiosk
                 Font timestampFont = new Font("Arial", 10, FontStyle.Italic);
                 SizeF timestampSize = e.Graphics.MeasureString(_timestamp, timestampFont);
                 e.Graphics.DrawString(_timestamp, timestampFont, printBrush, centerX - (timestampSize.Width / 2), yPos);
-                yPos += timestampSize.Height + 20; // Extra spacing before image
-
-                // Try to load and print the image
-                try
-                {
-                    string appPath = AppDomain.CurrentDomain.BaseDirectory;
-                    string imagePath = System.IO.Path.Combine(appPath, "Assets", "printer_image.png");
-
-                    if (System.IO.File.Exists(imagePath))
-                    {
-                        using (Image img = Image.FromFile(imagePath))
-                        {
-                            // Scale image to fit width (max 200px wide)
-                            float maxImageWidth = 200;
-                            float scale = Math.Min(1.0f, maxImageWidth / img.Width);
-                            float imageWidth = img.Width * scale;
-                            float imageHeight = img.Height * scale;
-
-                            // Center the image
-                            float imageX = centerX - (imageWidth / 2);
-
-                            // Draw the image
-                            e.Graphics.DrawImage(img, imageX, yPos, imageWidth, imageHeight);
-                        }
-                        System.Diagnostics.Debug.WriteLine("[ReceiptPrinter] Image printed successfully");
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[ReceiptPrinter] Image not found at: {imagePath}");
-                    }
-                }
-                catch (Exception imgEx)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[ReceiptPrinter] Error loading image: {imgEx.Message}");
-                }
 
                 // No more pages to print
                 e.HasMorePages = false;
