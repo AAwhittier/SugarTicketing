@@ -126,15 +126,25 @@ namespace ITTicketingKiosk
                 e.Graphics.DrawString(ticketText, ticketFont, printBrush, centerX - (ticketSize.Width / 2), yPos);
                 yPos += ticketSize.Height + 10; // Move down with 10px spacing
 
-                // Print subject (regular, 12pt, wrapped if needed)
+                // Print subject (regular, 12pt, centered)
                 Font subjectFont = new Font("Arial", 12, FontStyle.Regular);
                 float maxWidth = e.PageBounds.Width - 40; // 20px margin on each side
 
                 // Wrap subject text if too long
                 string wrappedSubject = WrapText(_subject, subjectFont, maxWidth, e.Graphics);
-                SizeF subjectSize = e.Graphics.MeasureString(wrappedSubject, subjectFont, (int)maxWidth);
-                e.Graphics.DrawString(wrappedSubject, subjectFont, printBrush, 20, yPos);
-                yPos += subjectSize.Height + 10;
+
+                // Center each line of the wrapped subject
+                string[] subjectLines = wrappedSubject.Split('\n');
+                foreach (string line in subjectLines)
+                {
+                    if (!string.IsNullOrEmpty(line))
+                    {
+                        SizeF lineSize = e.Graphics.MeasureString(line, subjectFont);
+                        e.Graphics.DrawString(line, subjectFont, printBrush, centerX - (lineSize.Width / 2), yPos);
+                        yPos += lineSize.Height;
+                    }
+                }
+                yPos += 10; // Extra spacing after subject
 
                 // Print timestamp (italic, 10pt)
                 Font timestampFont = new Font("Arial", 10, FontStyle.Italic);
