@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <ApplicationIcon>Assets\sugar_salem_ico.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,6 +14,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove="Assets\sugar_salem_ico.ico" />
+    <Resource Include="Assets\sugar_salem_ico.ico" />
+    <None Remove="Assets\sugar_salem_splash_screen.png" />
+    <SplashScreen Include="Assets\sugar_salem_splash_screen.png" />
     <None Remove="Assets\LockScreenLogo.scale-200.png" />
     <Content Include="Assets\LockScreenLogo.scale-200.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

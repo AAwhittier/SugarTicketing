@@ -8,6 +8,7 @@
     Title="IT Help Desk - New Ticket"
     Width="1200"
     Height="750"
+    Icon="Assets/sugar_salem_ico.ico"
     Background="{StaticResource AppBackgroundBrush}"
     WindowStartupLocation="CenterScreen">
 
