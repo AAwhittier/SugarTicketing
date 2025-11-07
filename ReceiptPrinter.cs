@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.Drawing.Printing;
+using System.Threading;
 
 namespace ITTicketingKiosk
 {
@@ -10,9 +11,18 @@ namespace ITTicketingKiosk
     public static class ReceiptPrinter
     {
         private const string DEFAULT_PRINTER_NAME = "Zebra KR203";
-        private static string _ticketNumber;
-        private static string _subject;
-        private static string _timestamp;
+        private static Image _cachedPrinterImage = null;
+        private static readonly object _cacheLock = new object();
+
+        // Use ThreadLocal to prevent race conditions when printing multiple tickets
+        private static ThreadLocal<PrintData> _printData = new ThreadLocal<PrintData>(() => new PrintData());
+
+        private class PrintData
+        {
+            public string TicketNumber { get; set; }
+            public string Subject { get; set; }
+            public string Timestamp { get; set; }
+        }
 
         /// <summary>
         /// Check if the receipt printer feature is enabled
@@ -36,15 +46,16 @@ namespace ITTicketingKiosk
                 return false;
             }
 
+            PrintDocument printDoc = null;
             try
             {
-                // Store data for printing
-                _ticketNumber = ticketNumber;
-                _subject = subject;
-                _timestamp = DateTime.Now.ToString("MM/dd/yyyy hh:mm tt");
+                // Store data for printing in thread-local storage
+                _printData.Value.TicketNumber = ticketNumber;
+                _printData.Value.Subject = subject;
+                _printData.Value.Timestamp = DateTime.Now.ToString("MM/dd/yyyy hh:mm tt");
 
                 // Create print document
-                PrintDocument printDoc = new PrintDocument();
+                printDoc = new PrintDocument();
 
                 // Try to find the Zebra KR203 printer
                 string printerName = FindZebraPrinter();
@@ -72,6 +83,15 @@ namespace ITTicketingKiosk
             {
                 System.Diagnostics.Debug.WriteLine($"[ReceiptPrinter] ERROR: Failed to print ticket: {ex.Message}");
                 return false;
+            }
+            finally
+            {
+                // Clean up PrintDocument and unsubscribe event handler
+                if (printDoc != null)
+                {
+                    printDoc.PrintPage -= PrintPage;
+                    printDoc.Dispose();
+                }
             }
         }
 
@@ -115,76 +135,79 @@ namespace ITTicketingKiosk
         {
             try
             {
-                float yPos = 20; // Start 20 pixels from top
+                const float TOP_MARGIN = 20f;
+                const float IMAGE_MAX_WIDTH = 200f;
+                const float IMAGE_SPACING = 15f;
+                const float TEXT_SPACING = 10f;
+
+                float yPos = TOP_MARGIN;
                 float centerX = e.PageBounds.Width / 2;
                 Brush printBrush = Brushes.Black;
 
+                // Get print data from thread-local storage
+                var data = _printData.Value;
+
                 // Try to load and print the image first (at the top)
-                try
+                Image printerImage = LoadPrinterImage();
+                if (printerImage != null)
                 {
-                    string appPath = AppDomain.CurrentDomain.BaseDirectory;
-                    string imagePath = System.IO.Path.Combine(appPath, "Assets", "printer_image.png");
-
-                    if (System.IO.File.Exists(imagePath))
+                    try
                     {
-                        using (Image img = Image.FromFile(imagePath))
-                        {
-                            // Scale image to fit width (max 200px wide)
-                            float maxImageWidth = 200;
-                            float scale = Math.Min(1.0f, maxImageWidth / img.Width);
-                            float imageWidth = img.Width * scale;
-                            float imageHeight = img.Height * scale;
+                        // Scale image to fit width
+                        float scale = Math.Min(1.0f, IMAGE_MAX_WIDTH / printerImage.Width);
+                        float imageWidth = printerImage.Width * scale;
+                        float imageHeight = printerImage.Height * scale;
 
-                            // Center the image
-                            float imageX = centerX - (imageWidth / 2);
+                        // Center the image
+                        float imageX = centerX - (imageWidth / 2);
 
-                            // Draw the image
-                            e.Graphics.DrawImage(img, imageX, yPos, imageWidth, imageHeight);
-                            yPos += imageHeight + 15; // Move down with 15px spacing after image
-                        }
-                        System.Diagnostics.Debug.WriteLine("[ReceiptPrinter] Image printed successfully");
+                        // Draw the image
+                        e.Graphics.DrawImage(printerImage, imageX, yPos, imageWidth, imageHeight);
+                        yPos += imageHeight + IMAGE_SPACING;
                     }
-                    else
+                    catch (Exception imgEx)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[ReceiptPrinter] Image not found at: {imagePath}");
+                        System.Diagnostics.Debug.WriteLine($"[ReceiptPrinter] Error drawing image: {imgEx.Message}");
                     }
-                }
-                catch (Exception imgEx)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[ReceiptPrinter] Error loading image: {imgEx.Message}");
                 }
 
                 // Print ticket number (bold, 16pt)
-                Font ticketFont = new Font("Arial", 16, FontStyle.Bold);
-                string ticketText = $"Ticket: {_ticketNumber}";
-                SizeF ticketSize = e.Graphics.MeasureString(ticketText, ticketFont);
-                e.Graphics.DrawString(ticketText, ticketFont, printBrush, centerX - (ticketSize.Width / 2), yPos);
-                yPos += ticketSize.Height + 10; // Move down with 10px spacing
+                using (Font ticketFont = new Font("Arial", 16, FontStyle.Bold))
+                {
+                    string ticketText = $"Ticket: {data.TicketNumber}";
+                    SizeF ticketSize = e.Graphics.MeasureString(ticketText, ticketFont);
+                    e.Graphics.DrawString(ticketText, ticketFont, printBrush, centerX - (ticketSize.Width / 2), yPos);
+                    yPos += ticketSize.Height + TEXT_SPACING;
+                }
 
                 // Print subject (regular, 12pt, centered)
-                Font subjectFont = new Font("Arial", 12, FontStyle.Regular);
-                float maxWidth = e.PageBounds.Width - 40; // 20px margin on each side
-
-                // Wrap subject text if too long
-                string wrappedSubject = WrapText(_subject, subjectFont, maxWidth, e.Graphics);
-
-                // Center each line of the wrapped subject
-                string[] subjectLines = wrappedSubject.Split('\n');
-                foreach (string line in subjectLines)
+                using (Font subjectFont = new Font("Arial", 12, FontStyle.Regular))
                 {
-                    if (!string.IsNullOrEmpty(line))
+                    float maxWidth = e.PageBounds.Width - 40; // 20px margin on each side
+
+                    // Wrap subject text if too long
+                    string wrappedSubject = WrapText(data.Subject, subjectFont, maxWidth, e.Graphics);
+
+                    // Center each line of the wrapped subject
+                    string[] subjectLines = wrappedSubject.Split('\n');
+                    foreach (string line in subjectLines)
                     {
-                        SizeF lineSize = e.Graphics.MeasureString(line, subjectFont);
-                        e.Graphics.DrawString(line, subjectFont, printBrush, centerX - (lineSize.Width / 2), yPos);
-                        yPos += lineSize.Height;
+                        if (!string.IsNullOrEmpty(line))
+                        {
+                            SizeF lineSize = e.Graphics.MeasureString(line, subjectFont);
+                            e.Graphics.DrawString(line, subjectFont, printBrush, centerX - (lineSize.Width / 2), yPos);
+                            yPos += lineSize.Height;
+                        }
                     }
+                    yPos += TEXT_SPACING;
                 }
-                yPos += 10; // Extra spacing after subject
 
                 // Print timestamp (italic, 10pt)
-                Font timestampFont = new Font("Arial", 10, FontStyle.Italic);
-                SizeF timestampSize = e.Graphics.MeasureString(_timestamp, timestampFont);
-                e.Graphics.DrawString(_timestamp, timestampFont, printBrush, centerX - (timestampSize.Width / 2), yPos);
+                using (Font timestampFont = new Font("Arial", 10, FontStyle.Italic))
+                {
+                    SizeF timestampSize = e.Graphics.MeasureString(data.Timestamp, timestampFont);
+                    e.Graphics.DrawString(data.Timestamp, timestampFont, printBrush, centerX - (timestampSize.Width / 2), yPos);
+                }
 
                 // No more pages to print
                 e.HasMorePages = false;
@@ -193,6 +216,45 @@ namespace ITTicketingKiosk
             {
                 System.Diagnostics.Debug.WriteLine($"[ReceiptPrinter] Error in PrintPage: {ex.Message}");
                 e.HasMorePages = false;
+            }
+        }
+
+        /// <summary>
+        /// Load printer image from disk or cache
+        /// </summary>
+        private static Image LoadPrinterImage()
+        {
+            lock (_cacheLock)
+            {
+                // Return cached image if available
+                if (_cachedPrinterImage != null)
+                {
+                    return _cachedPrinterImage;
+                }
+
+                // Try to load image from disk
+                try
+                {
+                    string appPath = AppDomain.CurrentDomain.BaseDirectory;
+                    string imagePath = System.IO.Path.Combine(appPath, "Assets", "printer_image.png");
+
+                    if (System.IO.File.Exists(imagePath))
+                    {
+                        _cachedPrinterImage = Image.FromFile(imagePath);
+                        System.Diagnostics.Debug.WriteLine("[ReceiptPrinter] Image loaded and cached successfully");
+                        return _cachedPrinterImage;
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[ReceiptPrinter] Image not found at: {imagePath}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ReceiptPrinter] Error loading image: {ex.Message}");
+                }
+
+                return null;
             }
         }
 
