@@ -4,46 +4,46 @@
 
     <!-- Text Styles -->
     <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="18"/>
+        <Setter Property="FontSize" Value="20"/>
         <Setter Property="FontWeight" Value="Bold"/>
         <Setter Property="Margin" Value="0,0,0,15"/>
         <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}"/>
     </Style>
 
     <Style x:Key="PageTitleStyle" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="28"/>
+        <Setter Property="FontSize" Value="30"/>
         <Setter Property="FontWeight" Value="Bold"/>
         <Setter Property="Foreground" Value="{StaticResource AccentTextBrush}"/>
     </Style>
 
     <Style x:Key="InstructionTitleStyle" TargetType="TextBlock">
         <Setter Property="FontWeight" Value="Bold"/>
-        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontSize" Value="15"/>
         <Setter Property="Margin" Value="0,10,0,5"/>
         <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}"/>
     </Style>
 
     <Style x:Key="InstructionBodyStyle" TargetType="TextBlock">
         <Setter Property="TextWrapping" Value="Wrap"/>
-        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontSize" Value="14"/>
         <Setter Property="Margin" Value="10,0,0,0"/>
         <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}"/>
     </Style>
 
     <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="16"/>
+        <Setter Property="FontSize" Value="18"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
         <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}"/>
     </Style>
 
     <Style x:Key="InfoLabelStyle" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontSize" Value="15"/>
         <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}"/>
     </Style>
 
     <Style x:Key="InfoValueStyle" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontSize" Value="15"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}"/>
     </Style>

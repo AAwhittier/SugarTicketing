@@ -22,7 +22,7 @@
                 <!-- PowerSchool Section -->
                 <StackPanel Margin="0,0,0,20">
                     <TextBlock Text="PowerSchool API Configuration" 
-                               FontSize="18" 
+                               FontSize="20" 
                                FontWeight="Bold"
                                Foreground="{StaticResource AccentTextBrush}"
                                Margin="0,0,0,15"/>
@@ -30,7 +30,7 @@
                     <TextBlock Text="Configure PowerSchool API credentials for device lookup."
                                TextWrapping="Wrap"
                                Foreground="{StaticResource SecondaryTextBrush}"
-                               FontSize="12"
+                               FontSize="16"
                                Margin="0,0,0,10"/>
 
                     <StackPanel>
@@ -56,14 +56,14 @@
                 <!-- NinjaOne Section -->
                 <StackPanel Margin="0,0,0,20">
                     <TextBlock Text="NinjaOne API Configuration" 
-                               FontSize="18" 
+                               FontSize="20" 
                                FontWeight="Bold"
                                Foreground="{StaticResource AccentTextBrush}"
                                Margin="0,0,0,15"/>
 
                     <TextBlock TextWrapping="Wrap"
                                Foreground="{StaticResource SecondaryTextBrush}"
-                               FontSize="12"
+                               FontSize="16"
                                Margin="0,0,0,10">
                         <Run Text="Configure NinjaOne OAuth credentials. After saving, you will be prompted to sign in and authorize the application."/>
                     </TextBlock>
@@ -104,10 +104,10 @@
                     <StackPanel>
                         <TextBlock Text="🔒 Security Information" 
                                    FontWeight="SemiBold"
-                                   FontSize="13"
+                                   FontSize="15"
                                    Margin="0,0,0,5"/>
                         <TextBlock TextWrapping="Wrap" 
-                                   FontSize="11"
+                                   FontSize="13"
                                    Foreground="{StaticResource SecondaryTextBrush}">
                             <Run Text="Credentials are securely stored in Windows Credential Manager and encrypted by the operating system. They are only accessible by this application and your Windows user account."/>
                         </TextBlock>
@@ -117,7 +117,7 @@
                 <!-- Printer Settings Section -->
                 <StackPanel Margin="0,0,0,20">
                     <TextBlock Text="Receipt Printer Configuration"
-                               FontSize="18"
+                               FontSize="20"
                                FontWeight="Bold"
                                Foreground="{StaticResource AccentTextBrush}"
                                Margin="0,0,0,15"/>
@@ -125,16 +125,16 @@
                     <TextBlock Text="Configure automatic ticket receipt printing."
                                TextWrapping="Wrap"
                                Foreground="{StaticResource SecondaryTextBrush}"
-                               FontSize="12"
+                               FontSize="16"
                                Margin="0,0,0,10"/>
 
                     <CheckBox x:Name="PrinterEnabledCheckBox"
                               Content="Enable automatic receipt printing"
-                              FontSize="13"
+                              FontSize="15"
                               Margin="0,0,0,5"/>
 
                     <TextBlock TextWrapping="Wrap"
-                               FontSize="11"
+                               FontSize="13"
                                Foreground="{StaticResource SecondaryTextBrush}"
                                Margin="20,0,0,0">
                         <Run Text="When enabled, the system will automatically print ticket numbers to the configured receipt printer (Zebra KR203) after successful ticket creation."/>
@@ -149,7 +149,7 @@
                 <!-- Clear Credentials Section -->
                 <StackPanel>
                     <TextBlock Text="Advanced Options" 
-                               FontSize="14" 
+                               FontSize="16" 
                                FontWeight="SemiBold"
                                Margin="0,0,0,10"/>
 
@@ -162,7 +162,7 @@
 
                     <TextBlock Text="This will remove all stored credentials including the refresh token. You will need to re-enter all credentials and sign in again."
                                TextWrapping="Wrap"
-                               FontSize="11"
+                               FontSize="13"
                                Foreground="{StaticResource SecondaryTextBrush}"/>
                 </StackPanel>
             </StackPanel>
