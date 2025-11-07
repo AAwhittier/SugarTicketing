@@ -610,7 +610,7 @@ namespace ITTicketingKiosk
                 // Print ticket receipt if enabled
                 if (ReceiptPrinter.IsEnabled())
                 {
-                    bool printSuccess = ReceiptPrinter.PrintTicketNumber(ticketId);
+                    bool printSuccess = ReceiptPrinter.PrintTicketNumber(ticketId, SubjectTextBox.Text.Trim());
                     if (printSuccess)
                     {
                         AddStatusMessage($"Ticket receipt printed", StatusType.Success);

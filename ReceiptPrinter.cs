@@ -10,7 +10,9 @@ namespace ITTicketingKiosk
     public static class ReceiptPrinter
     {
         private const string DEFAULT_PRINTER_NAME = "Zebra KR203";
-        private static string _textToPrint;
+        private static string _ticketNumber;
+        private static string _subject;
+        private static string _timestamp;
 
         /// <summary>
         /// Check if the receipt printer feature is enabled
@@ -21,11 +23,12 @@ namespace ITTicketingKiosk
         }
 
         /// <summary>
-        /// Print a ticket number to the receipt printer
+        /// Print a ticket receipt to the receipt printer
         /// </summary>
         /// <param name="ticketNumber">The ticket number to print</param>
+        /// <param name="subject">The ticket subject</param>
         /// <returns>True if print was successful, false otherwise</returns>
-        public static bool PrintTicketNumber(string ticketNumber)
+        public static bool PrintTicketNumber(string ticketNumber, string subject)
         {
             if (!IsEnabled())
             {
@@ -35,8 +38,10 @@ namespace ITTicketingKiosk
 
             try
             {
-                // Format the text to print
-                _textToPrint = $"Ticket: {ticketNumber}";
+                // Store data for printing
+                _ticketNumber = ticketNumber;
+                _subject = subject;
+                _timestamp = DateTime.Now.ToString("MM/dd/yyyy hh:mm tt");
 
                 // Create print document
                 PrintDocument printDoc = new PrintDocument();
@@ -110,17 +115,66 @@ namespace ITTicketingKiosk
         {
             try
             {
-                // Set up font and brush for printing
-                Font printFont = new Font("Arial", 16, FontStyle.Bold);
+                float yPos = 20; // Start 20 pixels from top
+                float centerX = e.PageBounds.Width / 2;
                 Brush printBrush = Brushes.Black;
 
-                // Calculate center position for text
-                SizeF textSize = e.Graphics.MeasureString(_textToPrint, printFont);
-                float x = (e.PageBounds.Width - textSize.Width) / 2;
-                float y = 20; // 20 pixels from top
+                // Print ticket number (bold, 16pt)
+                Font ticketFont = new Font("Arial", 16, FontStyle.Bold);
+                string ticketText = $"Ticket: {_ticketNumber}";
+                SizeF ticketSize = e.Graphics.MeasureString(ticketText, ticketFont);
+                e.Graphics.DrawString(ticketText, ticketFont, printBrush, centerX - (ticketSize.Width / 2), yPos);
+                yPos += ticketSize.Height + 10; // Move down with 10px spacing
 
-                // Draw the text
-                e.Graphics.DrawString(_textToPrint, printFont, printBrush, x, y);
+                // Print subject (regular, 12pt, wrapped if needed)
+                Font subjectFont = new Font("Arial", 12, FontStyle.Regular);
+                float maxWidth = e.PageBounds.Width - 40; // 20px margin on each side
+
+                // Wrap subject text if too long
+                string wrappedSubject = WrapText(_subject, subjectFont, maxWidth, e.Graphics);
+                SizeF subjectSize = e.Graphics.MeasureString(wrappedSubject, subjectFont, (int)maxWidth);
+                e.Graphics.DrawString(wrappedSubject, subjectFont, printBrush, 20, yPos);
+                yPos += subjectSize.Height + 10;
+
+                // Print timestamp (italic, 10pt)
+                Font timestampFont = new Font("Arial", 10, FontStyle.Italic);
+                SizeF timestampSize = e.Graphics.MeasureString(_timestamp, timestampFont);
+                e.Graphics.DrawString(_timestamp, timestampFont, printBrush, centerX - (timestampSize.Width / 2), yPos);
+                yPos += timestampSize.Height + 20; // Extra spacing before image
+
+                // Try to load and print the image
+                try
+                {
+                    string appPath = AppDomain.CurrentDomain.BaseDirectory;
+                    string imagePath = System.IO.Path.Combine(appPath, "Assets", "printer_image.png");
+
+                    if (System.IO.File.Exists(imagePath))
+                    {
+                        using (Image img = Image.FromFile(imagePath))
+                        {
+                            // Scale image to fit width (max 200px wide)
+                            float maxImageWidth = 200;
+                            float scale = Math.Min(1.0f, maxImageWidth / img.Width);
+                            float imageWidth = img.Width * scale;
+                            float imageHeight = img.Height * scale;
+
+                            // Center the image
+                            float imageX = centerX - (imageWidth / 2);
+
+                            // Draw the image
+                            e.Graphics.DrawImage(img, imageX, yPos, imageWidth, imageHeight);
+                        }
+                        System.Diagnostics.Debug.WriteLine("[ReceiptPrinter] Image printed successfully");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[ReceiptPrinter] Image not found at: {imagePath}");
+                    }
+                }
+                catch (Exception imgEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ReceiptPrinter] Error loading image: {imgEx.Message}");
+                }
 
                 // No more pages to print
                 e.HasMorePages = false;
@@ -130,6 +184,42 @@ namespace ITTicketingKiosk
                 System.Diagnostics.Debug.WriteLine($"[ReceiptPrinter] Error in PrintPage: {ex.Message}");
                 e.HasMorePages = false;
             }
+        }
+
+        /// <summary>
+        /// Wrap text to fit within a maximum width
+        /// </summary>
+        private static string WrapText(string text, Font font, float maxWidth, Graphics graphics)
+        {
+            if (string.IsNullOrEmpty(text))
+                return string.Empty;
+
+            string[] words = text.Split(' ');
+            string line = string.Empty;
+            string result = string.Empty;
+
+            foreach (string word in words)
+            {
+                string testLine = string.IsNullOrEmpty(line) ? word : line + " " + word;
+                SizeF size = graphics.MeasureString(testLine, font);
+
+                if (size.Width > maxWidth && !string.IsNullOrEmpty(line))
+                {
+                    result += line + "\n";
+                    line = word;
+                }
+                else
+                {
+                    line = testLine;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(line))
+            {
+                result += line;
+            }
+
+            return result;
         }
 
         /// <summary>
