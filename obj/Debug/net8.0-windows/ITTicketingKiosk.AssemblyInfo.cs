@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ITTicketingKiosk")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+759383a62b3246aa861476f0918f8ff7c09f5bd7")]
 [assembly: System.Reflection.AssemblyProductAttribute("ITTicketingKiosk")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ITTicketingKiosk")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

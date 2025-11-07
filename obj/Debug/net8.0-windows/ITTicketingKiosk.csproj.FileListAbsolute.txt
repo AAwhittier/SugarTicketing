@@ -36,3 +36,4 @@ C:\Users\Administrator\source\repos\WPF_Repos\ITTicketingKiosk\bin\Debug\net8.0-
 C:\Users\Administrator\source\repos\WPF_Repos\ITTicketingKiosk\bin\Debug\net8.0-windows\Assets\sugar_salem_technology_banner.png
 C:\Users\Administrator\source\repos\WPF_Repos\ITTicketingKiosk\bin\Debug\net8.0-windows\Assets\Wide310x150Logo.scale-200.png
 C:\Users\Administrator\source\repos\WPF_Repos\ITTicketingKiosk\obj\Debug\net8.0-windows\ITTicketingKiosk_Content.g.cs
+C:\Users\Administrator\source\repos\WPF_Repos\ITTicketingKiosk\obj\Debug\net8.0-windows\ITTicketingKiosk.sourcelink.json
