@@ -607,6 +607,20 @@ namespace ITTicketingKiosk
                 await ShowMessageDialog("Success", $"Ticket created successfully!\nTicket ID: {ticketId}");
                 AddStatusMessage($"Ticket #{ticketId} created successfully for {_currentNinjaUser.FullName}", StatusType.Success);
 
+                // Print ticket receipt if enabled
+                if (ReceiptPrinter.IsEnabled())
+                {
+                    bool printSuccess = ReceiptPrinter.PrintTicketNumber(ticketId);
+                    if (printSuccess)
+                    {
+                        AddStatusMessage($"Ticket receipt printed", StatusType.Success);
+                    }
+                    else
+                    {
+                        AddStatusMessage($"Failed to print ticket receipt (check printer status)", StatusType.Warning);
+                    }
+                }
+
                 ResetForm();
                 // Button will be re-enabled when user fills out the form again and navigates to page 2
             }
