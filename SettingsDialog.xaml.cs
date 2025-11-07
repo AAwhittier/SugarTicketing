@@ -59,6 +59,9 @@ namespace ITTicketingKiosk
 
                 // Load organization ID from Config (not stored separately in credential manager)
                 NinjaOrgIdTextBox.Text = Config.NINJA_ORGANIZATION_ID;
+
+                // Load printer enabled setting
+                PrinterEnabledCheckBox.IsChecked = CredentialManager.GetPrinterEnabled();
             }
             catch (Exception ex)
             {
@@ -118,6 +121,9 @@ namespace ITTicketingKiosk
 
                     // Update the organization ID in Config (will be used at runtime)
                     Config.NINJA_ORGANIZATION_ID = NinjaOrgIdTextBox.Text.Trim();
+
+                    // Save printer enabled setting
+                    CredentialManager.SavePrinterEnabled(PrinterEnabledCheckBox.IsChecked == true);
 
                     // Set dialog result and close
                     this.DialogResult = true;

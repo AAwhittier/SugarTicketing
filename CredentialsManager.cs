@@ -12,6 +12,7 @@ namespace ITTicketingKiosk
         // Resource names for credential vault
         private const string RESOURCE_POWERSCHOOL = "ITTicketingKiosk_PowerSchool";
         private const string RESOURCE_NINJAONE = "ITTicketingKiosk_NinjaOne";
+        private const string RESOURCE_SETTINGS = "ITTicketingKiosk_Settings";
 
         // Credential identifiers
         private const string PS_CLIENT_ID = "PS_ClientID";
@@ -19,6 +20,7 @@ namespace ITTicketingKiosk
         private const string NINJA_CLIENT_ID = "Ninja_ClientID";
         private const string NINJA_CLIENT_SECRET = "Ninja_ClientSecret";
         private const string NINJA_REFRESH_TOKEN = "Ninja_RefreshToken";
+        private const string PRINTER_ENABLED = "PrinterEnabled";
 
         /// <summary>
         /// Check if all required PowerSchool credentials are stored
@@ -190,6 +192,31 @@ namespace ITTicketingKiosk
 
         #endregion
 
+        #region Printer Settings
+
+        /// <summary>
+        /// Save printer enabled setting
+        /// </summary>
+        public static void SavePrinterEnabled(bool enabled)
+        {
+            SaveCredential(RESOURCE_SETTINGS, PRINTER_ENABLED, enabled.ToString());
+        }
+
+        /// <summary>
+        /// Get printer enabled setting (default: false)
+        /// </summary>
+        public static bool GetPrinterEnabled()
+        {
+            string value = GetCredential(RESOURCE_SETTINGS, PRINTER_ENABLED);
+            if (string.IsNullOrEmpty(value))
+            {
+                return false; // Default to disabled
+            }
+            return bool.TryParse(value, out bool result) && result;
+        }
+
+        #endregion
+
         #region Clear All
 
         /// <summary>
@@ -199,6 +226,7 @@ namespace ITTicketingKiosk
         {
             ClearPowerSchoolCredentials();
             ClearNinjaOneCredentials();
+            // Note: We don't clear printer settings when clearing credentials
         }
 
         #endregion
