@@ -318,7 +318,7 @@ namespace ITTicketingKiosk
     }
     
     /// <summary>
-    /// Handles NinjaOne API authentication using OAuth2 Authorization Code flow with refresh tokens
+    /// Handles NinjaOne API authentication using OAuth2 Authorization Code flow with PKCE and refresh tokens
     /// </summary>
     public class NinjaOneAPI
     {
@@ -331,6 +331,8 @@ namespace ITTicketingKiosk
         private string _accessToken;
         private string _refreshToken;
         private DateTime _tokenExpiry;
+        private string _codeVerifier; // PKCE code verifier
+        private string _codeChallenge; // PKCE code challenge
 
         public NinjaOneAPI(string baseUrl, string clientId, string clientSecret, string organizationId)
         {
@@ -370,7 +372,41 @@ namespace ITTicketingKiosk
         }
 
         /// <summary>
-        /// Builds the OAuth authorization URL for user authentication
+        /// Generates a cryptographically secure PKCE code verifier
+        /// </summary>
+        private string GenerateCodeVerifier()
+        {
+            // PKCE code verifier: 43-128 character random string
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+            var random = new System.Security.Cryptography.RNGCryptoServiceProvider();
+            var bytes = new byte[64];
+            random.GetBytes(bytes);
+
+            var result = new StringBuilder(64);
+            foreach (var b in bytes)
+            {
+                result.Append(chars[b % chars.Length]);
+            }
+            return result.ToString();
+        }
+
+        /// <summary>
+        /// Generates PKCE code challenge from code verifier using SHA256
+        /// </summary>
+        private string GenerateCodeChallenge(string codeVerifier)
+        {
+            using (var sha256 = System.Security.Cryptography.SHA256.Create())
+            {
+                var hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(codeVerifier));
+                return Convert.ToBase64String(hash)
+                    .TrimEnd('=')
+                    .Replace('+', '-')
+                    .Replace('/', '_');
+            }
+        }
+
+        /// <summary>
+        /// Builds the OAuth authorization URL for user authentication with PKCE
         /// </summary>
         public string BuildAuthorizationUrl(string state = null)
         {
@@ -379,13 +415,19 @@ namespace ITTicketingKiosk
                 state = Guid.NewGuid().ToString("N");
             }
 
+            // Generate PKCE values
+            _codeVerifier = GenerateCodeVerifier();
+            _codeChallenge = GenerateCodeChallenge(_codeVerifier);
+
             var queryParams = new Dictionary<string, string>
             {
                 { "response_type", "code" },
                 { "client_id", _clientId },
                 { "redirect_uri", Config.NINJA_REDIRECT_URI },
                 { "scope", Config.NINJA_OAUTH_SCOPE },
-                { "state", state }
+                { "state", state },
+                { "code_challenge", _codeChallenge },
+                { "code_challenge_method", "S256" }
             };
 
             var queryString = string.Join("&", queryParams.Select(kvp =>
@@ -444,10 +486,15 @@ namespace ITTicketingKiosk
         }
 
         /// <summary>
-        /// Exchanges authorization code for access token and refresh token
+        /// Exchanges authorization code for access token and refresh token with PKCE
         /// </summary>
         public async Task ExchangeCodeForTokensAsync(string code)
         {
+            if (string.IsNullOrEmpty(_codeVerifier))
+            {
+                throw new Exception("PKCE code verifier is missing. This is a security error.");
+            }
+
             string tokenUrl = $"{_baseUrl}/ws/oauth/token";
 
             var content = new FormUrlEncodedContent(new[]
@@ -456,7 +503,8 @@ namespace ITTicketingKiosk
                 new KeyValuePair<string, string>("code", code),
                 new KeyValuePair<string, string>("client_id", _clientId),
                 new KeyValuePair<string, string>("client_secret", _clientSecret),
-                new KeyValuePair<string, string>("redirect_uri", Config.NINJA_REDIRECT_URI)
+                new KeyValuePair<string, string>("redirect_uri", Config.NINJA_REDIRECT_URI),
+                new KeyValuePair<string, string>("code_verifier", _codeVerifier)
             });
 
             try
@@ -475,9 +523,16 @@ namespace ITTicketingKiosk
                     ? Convert.ToInt32(tokenData["expires_in"])
                     : 3600;
                 _tokenExpiry = DateTime.Now.AddSeconds(expiresIn - 60);
+
+                // Clear PKCE code verifier for security (one-time use)
+                _codeVerifier = null;
+                _codeChallenge = null;
             }
             catch (Exception ex)
             {
+                // Clear PKCE values on error
+                _codeVerifier = null;
+                _codeChallenge = null;
                 throw new Exception($"Failed to exchange code for tokens: {ex.Message}", ex);
             }
         }
@@ -811,6 +866,14 @@ namespace ITTicketingKiosk
 
                     // Parse query parameters
                     var queryParams = HttpUtility.ParseQueryString(request.Url.Query);
+
+                    // Security check: Detect if tokens are being passed in URL (should never happen with code flow)
+                    if (queryParams["access_token"] != null || queryParams["refresh_token"] != null)
+                    {
+                        System.Diagnostics.Debug.WriteLine("[SECURITY WARNING] Tokens detected in callback URL! This should not happen with authorization code flow.");
+                        System.Diagnostics.Debug.WriteLine("[SECURITY WARNING] Check OAuth provider configuration - it may be using implicit flow instead of code flow.");
+                    }
+
                     var result = new OAuthCallbackResult
                     {
                         Code = queryParams["code"],
@@ -821,7 +884,7 @@ namespace ITTicketingKiosk
 
                     // Send response to browser
                     string responseString = result.Error == null
-                        ? "<html><body><h1>Authentication Successful!</h1><p>You can close this window and return to the application.</p></body></html>"
+                        ? "<html><body><h1>Authentication Successful!</h1><p>You can close this window and return to the application.</p><script>window.history.replaceState({}, document.title, window.location.pathname);</script></body></html>"
                         : $"<html><body><h1>Authentication Failed</h1><p>Error: {result.Error}</p><p>{result.ErrorDescription}</p></body></html>";
 
                     byte[] buffer = Encoding.UTF8.GetBytes(responseString);
