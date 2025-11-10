@@ -503,8 +503,8 @@ namespace ITTicketingKiosk
         {
             string input = UsernameTextBox.Text;
 
-            // Only show autocomplete if 3+ characters and we have cached usernames
-            if (string.IsNullOrEmpty(input) || input.Length < 3 || _cachedUsernames.Count == 0)
+            // Only show autocomplete if 2+ characters and we have cached usernames
+            if (string.IsNullOrEmpty(input) || input.Length < 2 || _cachedUsernames.Count == 0)
             {
                 UsernameAutocompletePopup.IsOpen = false;
                 return;
