@@ -145,7 +145,7 @@
                                                 BorderBrush="{StaticResource BorderBrush}"
                                                 BorderThickness="1"
                                                 CornerRadius="4"
-                                                MaxHeight="200">
+                                                MaxHeight="288">
                                             <ListBox x:Name="UsernameAutocompleteList"
                                                      BorderThickness="0"
                                                      FontSize="16"

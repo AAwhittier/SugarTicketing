@@ -513,7 +513,6 @@ namespace ITTicketingKiosk
             // Filter usernames that start with the input (case-insensitive)
             var filteredUsernames = _cachedUsernames
                 .Where(u => u.StartsWith(input, StringComparison.OrdinalIgnoreCase))
-                .Take(10)
                 .ToList();
 
             if (filteredUsernames.Count > 0)
