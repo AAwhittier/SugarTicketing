@@ -138,7 +138,7 @@
 
                                     <!-- Placeholder Text -->
                                     <TextBlock x:Name="UsernamePlaceholder"
-                                               Text="Enter username..."
+                                               Text="Enter your school username..."
                                                FontSize="18"
                                                Foreground="#999999"
                                                VerticalAlignment="Center"
@@ -322,7 +322,8 @@
                                                   SelectionChanged="DeviceComboBox_SelectionChanged"
                                                   PreviewKeyDown="DeviceComboBox_PreviewKeyDown"
                                                   DropDownOpened="DeviceComboBox_DropDownOpened"
-                                                  DropDownClosed="DeviceComboBox_DropDownClosed"/>
+                                                  DropDownClosed="DeviceComboBox_DropDownClosed"
+                                                  TextChanged="DeviceComboBox_TextChanged"/>
 
                                         <!-- Placeholder Text -->
                                         <TextBlock x:Name="DevicePlaceholder"
