@@ -48,14 +48,14 @@ namespace ITTicketingKiosk
                 // Check if credentials are configured
                 if (!Config.AreCredentialsConfigured())
                 {
-                    AddStatusMessage("Credentials not configured - please enter API credentials", StatusType.Warning);
+                    AddStatusMessage(StatusMessageKey.CredentialsNotConfigured);
                     await ShowSettingsDialogAsync(isRequired: true);
 
                     // After settings dialog closes, check again
                     if (!Config.AreCredentialsConfigured())
                     {
                         // User still hasn't configured - show error and wait
-                        AddStatusMessage("Application cannot start without credentials", StatusType.Error);
+                        AddStatusMessage(StatusMessageKey.ApplicationCannotStart);
                         ShowAuthOverlay();
                         return;
                     }
@@ -69,7 +69,7 @@ namespace ITTicketingKiosk
             }
             catch (Exception ex)
             {
-                AddStatusMessage($"Initialization error: {ex.Message}", StatusType.Error);
+                AddStatusMessage(StatusMessageKey.InitializationError, ex.Message);
                 ShowAuthOverlay();
             }
         }
@@ -85,11 +85,11 @@ namespace ITTicketingKiosk
                 {
                     _settingsUnlocked = false;
                     SettingsButton.IsEnabled = false;
-                    AddStatusMessage("Test mode disabled - Settings locked", StatusType.Info);
+                    AddStatusMessage(StatusMessageKey.TestModeDisabled);
                 }
                 else
                 {
-                    AddStatusMessage("Test mode enabled - Press F12 to unlock settings", StatusType.Info);
+                    AddStatusMessage(StatusMessageKey.TestModeEnabled);
                 }
 
                 UpdateNavigationButtons();
@@ -100,8 +100,7 @@ namespace ITTicketingKiosk
                 _settingsUnlocked = !_settingsUnlocked;
                 SettingsButton.IsEnabled = _settingsUnlocked;
 
-                string status = _settingsUnlocked ? "unlocked" : "locked";
-                AddStatusMessage($"Settings menu {status}", StatusType.Info);
+                AddStatusMessage(_settingsUnlocked ? StatusMessageKey.SettingsUnlocked : StatusMessageKey.SettingsLocked);
                 e.Handled = true;
             }
         }
@@ -137,29 +136,29 @@ namespace ITTicketingKiosk
                 }
 
                 // Initialize PowerSchool API
-                AddStatusMessage("Initializing PowerSchool API...", StatusType.Info);
+                AddStatusMessage(StatusMessageKey.InitializingPowerSchool);
                 _psApi = new PowerSchoolAPI(
                     Config.PS_BASE_URL,
                     psClientId,
                     psClientSecret
                 );
-                AddStatusMessage("PowerSchool API initialized", StatusType.Success);
+                AddStatusMessage(StatusMessageKey.PowerSchoolInitialized);
 
                 // Initialize NinjaOne API
-                AddStatusMessage("Initializing NinjaOne API...", StatusType.Info);
+                AddStatusMessage(StatusMessageKey.InitializingNinjaOne);
                 _ninjaApi = new NinjaOneAPI(
                     Config.NINJA_BASE_URL,
                     ninjaClientId,
                     ninjaClientSecret,
                     Config.NINJA_ORGANIZATION_ID
                 );
-                AddStatusMessage("NinjaOne API initialized", StatusType.Success);
+                AddStatusMessage(StatusMessageKey.NinjaOneInitialized);
 
-                AddStatusMessage("All APIs initialized successfully", StatusType.Success);
+                AddStatusMessage(StatusMessageKey.AllAPIsInitialized);
             }
             catch (Exception ex)
             {
-                AddStatusMessage($"Failed to initialize APIs: {ex.Message}", StatusType.Error);
+                AddStatusMessage(StatusMessageKey.FailedToInitializeAPIs, ex.Message);
                 _psApi = null;
                 _ninjaApi = null;
                 throw; // Re-throw to be caught by caller
@@ -1157,6 +1156,16 @@ namespace ITTicketingKiosk
             StatusScrollViewer.ScrollToEnd();
         }
 
+        /// <summary>
+        /// Add status message using MessageService key
+        /// </summary>
+        private void AddStatusMessage(StatusMessageKey key, params object[] args)
+        {
+            var (message, type) = MessageService.GetStatusMessage(key);
+            string formattedMessage = args.Length > 0 ? string.Format(message, args) : message;
+            AddStatusMessage(formattedMessage, type);
+        }
+
         private async Task ShowMessageDialog(string title, string content)
         {
             await Dispatcher.InvokeAsync(() =>
@@ -1165,12 +1174,14 @@ namespace ITTicketingKiosk
             });
         }
 
-        private enum StatusType
+        /// <summary>
+        /// Show message dialog using MessageService key
+        /// </summary>
+        private async Task ShowMessageDialog(PopupMessageKey key, params object[] args)
         {
-            Info,
-            Success,
-            Warning,
-            Error
+            var (title, content) = MessageService.GetPopupMessage(key);
+            string formattedContent = args.Length > 0 ? string.Format(content, args) : content;
+            await ShowMessageDialog(title, formattedContent);
         }
     }
 
