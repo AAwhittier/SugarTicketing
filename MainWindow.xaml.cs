@@ -1271,108 +1271,108 @@ namespace ITTicketingKiosk
             string formattedContent = args.Length > 0 ? string.Format(content, args) : content;
             await ShowMessageDialog(title, formattedContent);
         }
-    }
 
-    // Placeholder Event Handlers
-    #region Placeholder Management
+        // Placeholder Event Handlers
+        #region Placeholder Management
 
-    /// <summary>
-    /// Handle Username TextBox focus and text changes for placeholder visibility
-    /// </summary>
-    private void UsernameTextBox_GotFocus(object sender, RoutedEventArgs e)
-    {
-        UsernamePlaceholder.Visibility = Visibility.Collapsed;
-    }
-
-    private void UsernameTextBox_LostFocus(object sender, RoutedEventArgs e)
-    {
-        if (string.IsNullOrWhiteSpace(UsernameTextBox.Text))
+        /// <summary>
+        /// Handle Username TextBox focus and text changes for placeholder visibility
+        /// </summary>
+        private void UsernameTextBox_GotFocus(object sender, RoutedEventArgs e)
         {
-            UsernamePlaceholder.Visibility = Visibility.Visible;
+            UsernamePlaceholder.Visibility = Visibility.Collapsed;
         }
-    }
 
-    /// <summary>
-    /// Handle Subject TextBox focus and text changes for placeholder visibility
-    /// </summary>
-    private void SubjectTextBox_GotFocus(object sender, RoutedEventArgs e)
-    {
-        SubjectPlaceholder.Visibility = Visibility.Collapsed;
-    }
-
-    private void SubjectTextBox_LostFocus(object sender, RoutedEventArgs e)
-    {
-        if (string.IsNullOrWhiteSpace(SubjectTextBox.Text))
+        private void UsernameTextBox_LostFocus(object sender, RoutedEventArgs e)
         {
-            SubjectPlaceholder.Visibility = Visibility.Visible;
+            if (string.IsNullOrWhiteSpace(UsernameTextBox.Text))
+            {
+                UsernamePlaceholder.Visibility = Visibility.Visible;
+            }
         }
-    }
 
-    private void SubjectTextBox_TextChanged(object sender, TextChangedEventArgs e)
-    {
-        if (SubjectTextBox.IsFocused)
+        /// <summary>
+        /// Handle Subject TextBox focus and text changes for placeholder visibility
+        /// </summary>
+        private void SubjectTextBox_GotFocus(object sender, RoutedEventArgs e)
         {
             SubjectPlaceholder.Visibility = Visibility.Collapsed;
         }
-    }
 
-    /// <summary>
-    /// Handle Description TextBox focus and text changes for placeholder visibility
-    /// </summary>
-    private void DescriptionTextBox_GotFocus(object sender, RoutedEventArgs e)
-    {
-        DescriptionPlaceholder.Visibility = Visibility.Collapsed;
-    }
-
-    private void DescriptionTextBox_LostFocus(object sender, RoutedEventArgs e)
-    {
-        if (string.IsNullOrWhiteSpace(DescriptionTextBox.Text))
+        private void SubjectTextBox_LostFocus(object sender, RoutedEventArgs e)
         {
-            DescriptionPlaceholder.Visibility = Visibility.Visible;
+            if (string.IsNullOrWhiteSpace(SubjectTextBox.Text))
+            {
+                SubjectPlaceholder.Visibility = Visibility.Visible;
+            }
         }
-    }
 
-    private void DescriptionTextBox_TextChanged(object sender, TextChangedEventArgs e)
-    {
-        if (DescriptionTextBox.IsFocused)
+        private void SubjectTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (SubjectTextBox.IsFocused)
+            {
+                SubjectPlaceholder.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        /// <summary>
+        /// Handle Description TextBox focus and text changes for placeholder visibility
+        /// </summary>
+        private void DescriptionTextBox_GotFocus(object sender, RoutedEventArgs e)
         {
             DescriptionPlaceholder.Visibility = Visibility.Collapsed;
         }
-    }
 
-    /// <summary>
-    /// Handle School Affiliation ComboBox dropdown for placeholder visibility
-    /// </summary>
-    private void SchoolAffiliationComboBox_DropDownOpened(object sender, EventArgs e)
-    {
-        SchoolAffiliationPlaceholder.Visibility = Visibility.Collapsed;
-    }
-
-    private void SchoolAffiliationComboBox_DropDownClosed(object sender, EventArgs e)
-    {
-        if (SchoolAffiliationComboBox.SelectedItem == null)
+        private void DescriptionTextBox_LostFocus(object sender, RoutedEventArgs e)
         {
-            SchoolAffiliationPlaceholder.Visibility = Visibility.Visible;
+            if (string.IsNullOrWhiteSpace(DescriptionTextBox.Text))
+            {
+                DescriptionPlaceholder.Visibility = Visibility.Visible;
+            }
         }
-    }
 
-    /// <summary>
-    /// Handle Device ComboBox dropdown for placeholder visibility
-    /// </summary>
-    private void DeviceComboBox_DropDownOpened(object sender, EventArgs e)
-    {
-        DevicePlaceholder.Visibility = Visibility.Collapsed;
-    }
-
-    private void DeviceComboBox_DropDownClosed(object sender, EventArgs e)
-    {
-        if (DeviceComboBox.SelectedItem == null)
+        private void DescriptionTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            DevicePlaceholder.Visibility = Visibility.Visible;
+            if (DescriptionTextBox.IsFocused)
+            {
+                DescriptionPlaceholder.Visibility = Visibility.Collapsed;
+            }
         }
-    }
 
-    #endregion
+        /// <summary>
+        /// Handle School Affiliation ComboBox dropdown for placeholder visibility
+        /// </summary>
+        private void SchoolAffiliationComboBox_DropDownOpened(object sender, EventArgs e)
+        {
+            SchoolAffiliationPlaceholder.Visibility = Visibility.Collapsed;
+        }
+
+        private void SchoolAffiliationComboBox_DropDownClosed(object sender, EventArgs e)
+        {
+            if (SchoolAffiliationComboBox.SelectedItem == null)
+            {
+                SchoolAffiliationPlaceholder.Visibility = Visibility.Visible;
+            }
+        }
+
+        /// <summary>
+        /// Handle Device ComboBox dropdown for placeholder visibility
+        /// </summary>
+        private void DeviceComboBox_DropDownOpened(object sender, EventArgs e)
+        {
+            DevicePlaceholder.Visibility = Visibility.Collapsed;
+        }
+
+        private void DeviceComboBox_DropDownClosed(object sender, EventArgs e)
+        {
+            if (DeviceComboBox.SelectedItem == null)
+            {
+                DevicePlaceholder.Visibility = Visibility.Visible;
+            }
+        }
+
+        #endregion
+    }
 
     // Data Models
     /// <summary>
