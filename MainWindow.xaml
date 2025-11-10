@@ -322,8 +322,7 @@
                                                   SelectionChanged="DeviceComboBox_SelectionChanged"
                                                   PreviewKeyDown="DeviceComboBox_PreviewKeyDown"
                                                   DropDownOpened="DeviceComboBox_DropDownOpened"
-                                                  DropDownClosed="DeviceComboBox_DropDownClosed"
-                                                  TextChanged="DeviceComboBox_TextChanged"/>
+                                                  DropDownClosed="DeviceComboBox_DropDownClosed"/>
 
                                         <!-- Placeholder Text -->
                                         <TextBlock x:Name="DevicePlaceholder"
