@@ -605,6 +605,38 @@ namespace ITTicketingKiosk
         }
 
         /// <summary>
+        /// Gets all users from NinjaOne for caching/autocomplete purposes
+        /// Returns list of all end-users and technicians
+        /// </summary>
+        public async Task<List<NinjaEndUser>> GetAllUsersAsync()
+        {
+            string token = await GetAccessTokenAsync();
+            string usersUrl = $"{_baseUrl}{Config.NINJA_USERS_ENDPOINT}";
+
+            var request = new HttpRequestMessage(HttpMethod.Get, usersUrl);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+            try
+            {
+                var response = await _httpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+
+                string responseBody = await response.Content.ReadAsStringAsync();
+                var users = JsonConvert.DeserializeObject<List<NinjaEndUser>>(responseBody);
+
+                System.Diagnostics.Debug.WriteLine($"[NinjaOne] GetAllUsersAsync returned {users?.Count ?? 0} users");
+
+                return users ?? new List<NinjaEndUser>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[NinjaOne] ERROR in GetAllUsersAsync: {ex.Message}");
+                throw new Exception($"Failed to get all users: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
         /// Looks up a user by username (matches email prefix before @)
         /// Uses /v2/users which includes both end-users and technicians
         /// </summary>
