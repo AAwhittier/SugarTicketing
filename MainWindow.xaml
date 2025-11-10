@@ -132,7 +132,19 @@
                                              FontSize="18"
                                              MinHeight="40"
                                              PreviewKeyDown="UsernameTextBox_PreviewKeyDown"
-                                             TextChanged="UsernameTextBox_TextChanged"/>
+                                             TextChanged="UsernameTextBox_TextChanged"
+                                             GotFocus="UsernameTextBox_GotFocus"
+                                             LostFocus="UsernameTextBox_LostFocus"/>
+
+                                    <!-- Placeholder Text -->
+                                    <TextBlock x:Name="UsernamePlaceholder"
+                                               Text="Enter username..."
+                                               FontSize="18"
+                                               Foreground="#999999"
+                                               VerticalAlignment="Center"
+                                               Margin="8,0,0,0"
+                                               IsHitTestVisible="False"
+                                               Visibility="Visible"/>
 
                                     <!-- Autocomplete Popup -->
                                     <Popup x:Name="UsernameAutocompletePopup"
@@ -261,16 +273,29 @@
                                     </Grid.ColumnDefinitions>
 
                                     <TextBlock Grid.Column="0"
-                                               Text="School Affiliation:" 
+                                               Text="School Affiliation:"
                                                Style="{StaticResource FieldLabelStyle}"
                                                Margin="0,0,10,0"/>
-                                    <ComboBox Grid.Column="1"
-                                              x:Name="SchoolAffiliationComboBox" 
-                                              Style="{StaticResource StandardComboBoxStyle}"
-                                              FontSize="16"
-                                              HorizontalAlignment="Stretch"
-                                              Height="40"
-                                              SelectionChanged="SchoolAffiliationComboBox_SelectionChanged"/>
+                                    <Grid Grid.Column="1">
+                                        <ComboBox x:Name="SchoolAffiliationComboBox"
+                                                  Style="{StaticResource StandardComboBoxStyle}"
+                                                  FontSize="16"
+                                                  HorizontalAlignment="Stretch"
+                                                  Height="40"
+                                                  SelectionChanged="SchoolAffiliationComboBox_SelectionChanged"
+                                                  DropDownOpened="SchoolAffiliationComboBox_DropDownOpened"
+                                                  DropDownClosed="SchoolAffiliationComboBox_DropDownClosed"/>
+
+                                        <!-- Placeholder Text -->
+                                        <TextBlock x:Name="SchoolAffiliationPlaceholder"
+                                                   Text="Select school..."
+                                                   FontSize="16"
+                                                   Foreground="#999999"
+                                                   VerticalAlignment="Center"
+                                                   Margin="8,0,0,0"
+                                                   IsHitTestVisible="False"
+                                                   Visibility="Visible"/>
+                                    </Grid>
                                 </Grid>
 
                                 <!-- Device (Right 50%) -->
@@ -281,21 +306,34 @@
                                     </Grid.ColumnDefinitions>
 
                                     <TextBlock Grid.Column="0"
-                                               Text="Device:" 
+                                               Text="Device:"
                                                Style="{StaticResource FieldLabelStyle}"
                                                Margin="0,0,10,0"/>
 
-                                    <ComboBox Grid.Column="1"
-                                              x:Name="DeviceComboBox"
-                                              Style="{StaticResource StandardComboBoxStyle}"
-                                              FontSize="16"
-                                              HorizontalAlignment="Stretch"
-                                              Height="40"
-                                              IsEditable="False"
-                                              IsTextSearchEnabled="False"
-                                              StaysOpenOnEdit="True"
-                                              SelectionChanged="DeviceComboBox_SelectionChanged"
-                                              PreviewKeyDown="DeviceComboBox_PreviewKeyDown"/>
+                                    <Grid Grid.Column="1">
+                                        <ComboBox x:Name="DeviceComboBox"
+                                                  Style="{StaticResource StandardComboBoxStyle}"
+                                                  FontSize="16"
+                                                  HorizontalAlignment="Stretch"
+                                                  Height="40"
+                                                  IsEditable="False"
+                                                  IsTextSearchEnabled="False"
+                                                  StaysOpenOnEdit="True"
+                                                  SelectionChanged="DeviceComboBox_SelectionChanged"
+                                                  PreviewKeyDown="DeviceComboBox_PreviewKeyDown"
+                                                  DropDownOpened="DeviceComboBox_DropDownOpened"
+                                                  DropDownClosed="DeviceComboBox_DropDownClosed"/>
+
+                                        <!-- Placeholder Text -->
+                                        <TextBlock x:Name="DevicePlaceholder"
+                                                   Text="Select device..."
+                                                   FontSize="16"
+                                                   Foreground="#999999"
+                                                   VerticalAlignment="Center"
+                                                   Margin="8,0,0,0"
+                                                   IsHitTestVisible="False"
+                                                   Visibility="Visible"/>
+                                    </Grid>
                                 </Grid>
                             </Grid>
 
@@ -319,15 +357,29 @@
                                 </Grid.ColumnDefinitions>
 
                                 <TextBlock Grid.Column="0"
-                                           Text="Subject:" 
+                                           Text="Subject:"
                                            Style="{StaticResource FieldLabelStyle}"
                                            Margin="0,0,10,0"/>
 
-                                <TextBox Grid.Column="1"
-                                         x:Name="SubjectTextBox"
-                                         Style="{StaticResource StandardTextBoxStyle}"
-                                         FontSize="16"
-                                         MinHeight="40"/>
+                                <Grid Grid.Column="1">
+                                    <TextBox x:Name="SubjectTextBox"
+                                             Style="{StaticResource StandardTextBoxStyle}"
+                                             FontSize="16"
+                                             MinHeight="40"
+                                             GotFocus="SubjectTextBox_GotFocus"
+                                             LostFocus="SubjectTextBox_LostFocus"
+                                             TextChanged="SubjectTextBox_TextChanged"/>
+
+                                    <!-- Placeholder Text -->
+                                    <TextBlock x:Name="SubjectPlaceholder"
+                                               Text="Brief summary of the issue..."
+                                               FontSize="16"
+                                               Foreground="#999999"
+                                               VerticalAlignment="Center"
+                                               Margin="8,0,0,0"
+                                               IsHitTestVisible="False"
+                                               Visibility="Visible"/>
+                                </Grid>
                             </Grid>
 
                             <!-- Description -->
@@ -337,19 +389,34 @@
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
-                                <TextBlock Grid.Row="0" 
-                                           Text="Description:" 
+                                <TextBlock Grid.Row="0"
+                                           Text="Description:"
                                            Style="{StaticResource FieldLabelStyle}"
                                            Margin="0,0,0,10"/>
-                                <TextBox x:Name="DescriptionTextBox"
-                                         Grid.Row="1"
-                                         Style="{StaticResource StandardTextBoxStyle}"
-                                         FontSize="16"
-                                         TextWrapping="Wrap"
-                                         AcceptsReturn="True"
-                                         VerticalScrollBarVisibility="Auto"
-                                         VerticalContentAlignment="Top"
-                                         Height="370"/>
+
+                                <Grid Grid.Row="1">
+                                    <TextBox x:Name="DescriptionTextBox"
+                                             Style="{StaticResource StandardTextBoxStyle}"
+                                             FontSize="16"
+                                             TextWrapping="Wrap"
+                                             AcceptsReturn="True"
+                                             VerticalScrollBarVisibility="Auto"
+                                             VerticalContentAlignment="Top"
+                                             Height="370"
+                                             GotFocus="DescriptionTextBox_GotFocus"
+                                             LostFocus="DescriptionTextBox_LostFocus"
+                                             TextChanged="DescriptionTextBox_TextChanged"/>
+
+                                    <!-- Placeholder Text -->
+                                    <TextBlock x:Name="DescriptionPlaceholder"
+                                               Text="Detailed description of the problem..."
+                                               FontSize="16"
+                                               Foreground="#999999"
+                                               VerticalAlignment="Top"
+                                               Margin="8,10,0,0"
+                                               IsHitTestVisible="False"
+                                               Visibility="Visible"/>
+                                </Grid>
                             </Grid>
 
                             <!-- Submit Button -->
