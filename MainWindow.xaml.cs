@@ -13,16 +13,16 @@ namespace ITTicketingKiosk
 {
     public partial class MainWindow : Window
     {
-        private PowerSchoolAPI _psApi;
-        private NinjaOneAPI _ninjaApi;
-        private UserData _currentUser;
-        private NinjaEndUser _currentNinjaUser;
+        private PowerSchoolAPI? _psApi;
+        private NinjaOneAPI? _ninjaApi;
+        private UserData? _currentUser;
+        private NinjaEndUser? _currentNinjaUser;
         private int _currentPage = 1;
         private bool _testModeEnabled = false;
         private bool _settingsUnlocked = false;
         private bool _isDeviceWriteInMode = false;
         private List<string> _cachedUsernames = new List<string>();
-        private NinjaEndUser _kioskUser;
+        private NinjaEndUser? _kioskUser;
 
         public MainWindow()
         {
@@ -783,7 +783,7 @@ namespace ITTicketingKiosk
                 string schoolAffiliation = string.Empty;
                 if (SchoolAffiliationComboBox.SelectedItem != null)
                 {
-                    schoolAffiliation = SchoolAffiliationComboBox.SelectedItem.ToString();
+                    schoolAffiliation = SchoolAffiliationComboBox.SelectedItem.ToString() ?? string.Empty;
                 }
 
                 // Description is just the user's text - no prefixes needed
@@ -1239,11 +1239,11 @@ namespace ITTicketingKiosk
     /// </summary>
     public class UserData
     {
-        public string Username { get; set; }
-        public List<string> SchoolIds { get; set; } // Support multiple school affiliations
-        public string StudentNumber { get; set; }
-        public string TeacherNumber { get; set; }
-        public List<string> Devices { get; set; }
-        public string UserType { get; set; } // "students", "teachers", or "users"
+        public required string Username { get; set; }
+        public required List<string> SchoolIds { get; set; } // Support multiple school affiliations
+        public required string StudentNumber { get; set; }
+        public required string TeacherNumber { get; set; }
+        public required List<string> Devices { get; set; }
+        public required string UserType { get; set; } // "students", "teachers", or "users"
     }
 }

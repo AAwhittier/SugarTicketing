@@ -19,10 +19,10 @@ namespace ITTicketingKiosk
 
         private class PrintData
         {
-            public string TicketNumber { get; set; }
-            public string Device { get; set; }
-            public string Subject { get; set; }
-            public string Timestamp { get; set; }
+            public required string TicketNumber { get; set; }
+            public required string Device { get; set; }
+            public required string Subject { get; set; }
+            public required string Timestamp { get; set; }
         }
 
         /// <summary>
