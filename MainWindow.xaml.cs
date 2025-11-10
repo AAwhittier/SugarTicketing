@@ -336,6 +336,9 @@ namespace ITTicketingKiosk
                 return;
             }
 
+            // Parse username from email format if @ is present
+            username = ParseUsername(username);
+
             SearchButton.IsEnabled = false;
             AddStatusMessage($"Searching for user: {username}...", StatusType.Info);
 
@@ -533,6 +536,28 @@ namespace ITTicketingKiosk
             SchoolAffiliationComboBox.SelectedIndex = -1; // No default selection - user must choose
 
             AddStatusMessage("School affiliation not found - please select your school", StatusType.Warning);
+        }
+
+        /// <summary>
+        /// Parse username from email format if @ is present
+        /// Handles both username and email@domain.com formats
+        /// </summary>
+        private string ParseUsername(string input)
+        {
+            if (string.IsNullOrEmpty(input))
+                return input;
+
+            // If input contains @, extract just the username part (before @)
+            int atIndex = input.IndexOf('@');
+            if (atIndex > 0)
+            {
+                string username = input.Substring(0, atIndex);
+                AddStatusMessage($"Parsed username '{username}' from email format", StatusType.Info);
+                return username;
+            }
+
+            // Return original input if no @ found
+            return input;
         }
 
         private void ClearUserInfo()
