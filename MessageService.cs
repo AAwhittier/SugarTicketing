@@ -104,7 +104,8 @@ namespace ITTicketingKiosk
         ReinitializingAPIs,
         InitializationFailed,
         ErrorShowingSettings,
-        EnterCustomDeviceName
+        EnterCustomDeviceName,
+        UsingKioskFallback
     }
 
     /// <summary>
@@ -232,6 +233,7 @@ namespace ITTicketingKiosk
                 StatusMessageKey.InitializationFailed => ("Initialization failed: {0}", StatusType.Error),
                 StatusMessageKey.ErrorShowingSettings => ("Error showing settings dialog: {0}", StatusType.Error),
                 StatusMessageKey.EnterCustomDeviceName => ("Enter custom device name", StatusType.Info),
+                StatusMessageKey.UsingKioskFallback => ("User '{0}' not in NinjaOne - using kiosk account for ticket submission", StatusType.Info),
                 _ => ("Unknown status message", StatusType.Info)
             };
         }

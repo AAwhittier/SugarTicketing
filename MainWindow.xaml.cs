@@ -22,6 +22,7 @@ namespace ITTicketingKiosk
         private bool _settingsUnlocked = false;
         private bool _isDeviceWriteInMode = false;
         private List<string> _cachedUsernames = new List<string>();
+        private NinjaEndUser _kioskUser;
 
         public MainWindow()
         {
@@ -189,8 +190,9 @@ namespace ITTicketingKiosk
                         HideAuthOverlay();
                         AddStatusMessage(StatusMessageKey.AuthenticatedReady);
 
-                        // Initialize username cache
+                        // Initialize username cache and kiosk user
                         _ = UpdateUsernameCacheAsync();
+                        _ = LookupKioskUserAsync();
                         return;
                     }
                     catch (Exception ex)
@@ -256,8 +258,9 @@ namespace ITTicketingKiosk
                 HideAuthOverlay();
                 AddStatusMessage(StatusMessageKey.ReadyToCreateTickets);
 
-                // Initialize username cache
+                // Initialize username cache and kiosk user
                 _ = UpdateUsernameCacheAsync();
+                _ = LookupKioskUserAsync();
             }
             catch (TimeoutException)
             {
@@ -465,6 +468,31 @@ namespace ITTicketingKiosk
             {
                 System.Diagnostics.Debug.WriteLine($"[Autocomplete] Failed to update cache: {ex.Message}");
                 // Don't show error to user - autocomplete is optional feature
+            }
+        }
+
+        /// <summary>
+        /// Lookup and cache the 'kiosk' user from NinjaOne for fallback ticket creation
+        /// </summary>
+        private async Task LookupKioskUserAsync()
+        {
+            try
+            {
+                _kioskUser = await _ninjaApi.LookupEndUserAsync("kiosk");
+
+                if (_kioskUser != null && !string.IsNullOrEmpty(_kioskUser.Uid))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Kiosk] Successfully cached kiosk user: {_kioskUser.FullName} ({_kioskUser.Uid})");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("[Kiosk] Warning: 'kiosk' user not found in NinjaOne");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Kiosk] Failed to lookup kiosk user: {ex.Message}");
+                // Don't show error to user - kiosk fallback is a background feature
             }
         }
 
@@ -713,8 +741,28 @@ namespace ITTicketingKiosk
 
             try
             {
-                // Ensure we have a requester UID from NinjaOne
-                if (_currentNinjaUser == null || string.IsNullOrEmpty(_currentNinjaUser.Uid))
+                // Determine requester information - use kiosk fallback if needed
+                string requesterUid = null;
+                string requesterName = null;
+                string requesterEmail = null;
+
+                if (_currentNinjaUser != null && !string.IsNullOrEmpty(_currentNinjaUser.Uid))
+                {
+                    // Normal case: use the actual user from NinjaOne
+                    requesterUid = _currentNinjaUser.Uid;
+                    requesterName = _currentNinjaUser.FullName;
+                    requesterEmail = _currentNinjaUser.Email;
+                }
+                else if (_currentUser != null && _kioskUser != null && !string.IsNullOrEmpty(_kioskUser.Uid))
+                {
+                    // Fallback case: user exists in PowerSchool but not NinjaOne
+                    // Use kiosk account for ticket submission
+                    requesterUid = _kioskUser.Uid;
+                    requesterName = _kioskUser.FullName;
+                    requesterEmail = _kioskUser.Email;
+                    AddStatusMessage(StatusMessageKey.UsingKioskFallback, _currentUser.Username);
+                }
+                else
                 {
                     throw new Exception("No NinjaOne user information available. User must exist in NinjaOne to create tickets.");
                 }
@@ -745,9 +793,9 @@ namespace ITTicketingKiosk
                 var ticket = await _ninjaApi.CreateTicketAsync(
                     subject: SubjectTextBox.Text.Trim(),
                     body: description,
-                    requesterUid: _currentNinjaUser.Uid,
-                    requesterName: _currentNinjaUser.FullName,
-                    requesterEmail: _currentNinjaUser.Email,
+                    requesterUid: requesterUid,
+                    requesterName: requesterName,
+                    requesterEmail: requesterEmail,
                     schoolAffiliation: schoolAffiliation,
                     deviceName: deviceValue,
                     studentNumber: _currentUser?.StudentNumber,
@@ -756,7 +804,7 @@ namespace ITTicketingKiosk
 
                 string ticketId = ticket.ContainsKey("id") ? ticket["id"].ToString() : "N/A";
                 await ShowMessageDialog(PopupMessageKey.TicketSuccess, ticketId);
-                AddStatusMessage(StatusMessageKey.TicketCreatedSuccessfully, ticketId, _currentNinjaUser.FullName);
+                AddStatusMessage(StatusMessageKey.TicketCreatedSuccessfully, ticketId, requesterName);
 
                 // Print ticket receipt if enabled
                 if (ReceiptPrinter.IsEnabled())
