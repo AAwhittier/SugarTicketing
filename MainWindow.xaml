@@ -129,7 +129,8 @@
                                          Grid.Column="1"
                                          Style="{StaticResource StandardTextBoxStyle}"
                                          FontSize="18"
-                                         MinHeight="40"/>
+                                         MinHeight="40"
+                                         PreviewKeyDown="UsernameTextBox_PreviewKeyDown"/>
                                 <Button x:Name="SearchButton"
                                         Grid.Column="2"
                                         Content="Search"
@@ -297,7 +298,7 @@
                                          AcceptsReturn="True"
                                          VerticalScrollBarVisibility="Auto"
                                          VerticalContentAlignment="Top"
-                                         Height="250"/>
+                                         Height="400"/>
                             </Grid>
 
                             <!-- Submit Button -->
