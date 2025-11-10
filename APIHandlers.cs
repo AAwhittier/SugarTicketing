@@ -378,9 +378,8 @@ namespace ITTicketingKiosk
         {
             // PKCE code verifier: 43-128 character random string
             const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
-            var random = new System.Security.Cryptography.RNGCryptoServiceProvider();
             var bytes = new byte[64];
-            random.GetBytes(bytes);
+            System.Security.Cryptography.RandomNumberGenerator.Fill(bytes);
 
             var result = new StringBuilder(64);
             foreach (var b in bytes)
@@ -733,9 +732,9 @@ namespace ITTicketingKiosk
             string requesterName,
             string requesterEmail,
             string schoolAffiliation,
-            string deviceName = null,
-            string studentNumber = null,
-            string teacherNumber = null)
+            string? deviceName = null,
+            string? studentNumber = null,
+            string? teacherNumber = null)
         {
             string token = await GetAccessTokenAsync();
             string ticketUrl = $"{_baseUrl}/v2/ticketing/ticket";
@@ -961,10 +960,10 @@ namespace ITTicketingKiosk
     /// </summary>
     public class OAuthCallbackResult
     {
-        public string Code { get; set; }
-        public string State { get; set; }
-        public string Error { get; set; }
-        public string ErrorDescription { get; set; }
+        public required string Code { get; set; }
+        public required string State { get; set; }
+        public required string Error { get; set; }
+        public required string ErrorDescription { get; set; }
     }
 
     /// <summary>
@@ -976,25 +975,25 @@ namespace ITTicketingKiosk
         public int Id { get; set; }
 
         [JsonProperty("uid")]
-        public string Uid { get; set; }
+        public required string Uid { get; set; }
 
         [JsonProperty("firstName")]
-        public string FirstName { get; set; }
+        public required string FirstName { get; set; }
 
         [JsonProperty("lastName")]
-        public string LastName { get; set; }
+        public required string LastName { get; set; }
 
         [JsonProperty("email")]
-        public string Email { get; set; }
+        public required string Email { get; set; }
 
         [JsonProperty("phone")]
-        public string Phone { get; set; }
+        public required string Phone { get; set; }
 
         [JsonProperty("enabled")]
         public bool Enabled { get; set; }
 
         [JsonProperty("userType")]
-        public string UserType { get; set; }
+        public required string UserType { get; set; }
 
         // Full name helper property
         public string FullName => $"{FirstName} {LastName}".Trim();
