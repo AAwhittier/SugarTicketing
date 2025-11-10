@@ -21,6 +21,7 @@ namespace ITTicketingKiosk
         private bool _testModeEnabled = false;
         private bool _settingsUnlocked = false;
         private bool _isDeviceWriteInMode = false;
+        private List<string> _cachedUsernames = new List<string>();
 
         public MainWindow()
         {
@@ -188,6 +189,9 @@ namespace ITTicketingKiosk
                         // Token is valid
                         HideAuthOverlay();
                         AddStatusMessage("Authenticated - Ready to create tickets", StatusType.Success);
+
+                        // Initialize username cache
+                        _ = UpdateUsernameCacheAsync();
                         return;
                     }
                     catch (Exception ex)
@@ -252,6 +256,9 @@ namespace ITTicketingKiosk
                 await Task.Delay(1000);
                 HideAuthOverlay();
                 AddStatusMessage("Ready to create tickets", StatusType.Info);
+
+                // Initialize username cache
+                _ = UpdateUsernameCacheAsync();
             }
             catch (TimeoutException)
             {
@@ -429,6 +436,96 @@ namespace ITTicketingKiosk
             finally
             {
                 SearchButton.IsEnabled = true;
+
+                // Update username cache after search (whether successful or not)
+                _ = UpdateUsernameCacheAsync();
+            }
+        }
+
+        /// <summary>
+        /// Updates the cached username list from NinjaOne
+        /// </summary>
+        private async Task UpdateUsernameCacheAsync()
+        {
+            try
+            {
+                var allUsers = await _ninjaApi.GetAllUsersAsync();
+
+                // Extract usernames from emails (part before @)
+                _cachedUsernames = allUsers
+                    .Where(u => !string.IsNullOrEmpty(u.Email) && u.Email.Contains("@"))
+                    .Select(u => u.Email.Split('@')[0])
+                    .Distinct()
+                    .OrderBy(u => u)
+                    .ToList();
+
+                AddStatusMessage($"Cached {_cachedUsernames.Count} usernames for autocomplete", StatusType.Info);
+                System.Diagnostics.Debug.WriteLine($"[Autocomplete] Cached {_cachedUsernames.Count} usernames");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Autocomplete] Failed to update cache: {ex.Message}");
+                // Don't show error to user - autocomplete is optional feature
+            }
+        }
+
+        /// <summary>
+        /// Handle text changes in Username field for autocomplete
+        /// </summary>
+        private void UsernameTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            string input = UsernameTextBox.Text;
+
+            // Only show autocomplete if 3+ characters and we have cached usernames
+            if (string.IsNullOrEmpty(input) || input.Length < 3 || _cachedUsernames.Count == 0)
+            {
+                UsernameAutocompletePopup.IsOpen = false;
+                return;
+            }
+
+            // Filter usernames that start with the input (case-insensitive)
+            var filteredUsernames = _cachedUsernames
+                .Where(u => u.StartsWith(input, StringComparison.OrdinalIgnoreCase))
+                .Take(10)
+                .ToList();
+
+            if (filteredUsernames.Count > 0)
+            {
+                UsernameAutocompleteList.ItemsSource = filteredUsernames;
+                UsernameAutocompletePopup.IsOpen = true;
+            }
+            else
+            {
+                UsernameAutocompletePopup.IsOpen = false;
+            }
+        }
+
+        /// <summary>
+        /// Handle selection from autocomplete list
+        /// </summary>
+        private void UsernameAutocompleteList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (UsernameAutocompleteList.SelectedItem != null)
+            {
+                string selectedUsername = UsernameAutocompleteList.SelectedItem.ToString();
+                UsernameTextBox.Text = selectedUsername;
+                UsernameTextBox.CaretIndex = selectedUsername.Length;
+                UsernameAutocompletePopup.IsOpen = false;
+            }
+        }
+
+        /// <summary>
+        /// Handle mouse click on autocomplete item
+        /// </summary>
+        private void UsernameAutocompleteList_MouseUp(object sender, MouseButtonEventArgs e)
+        {
+            if (UsernameAutocompleteList.SelectedItem != null)
+            {
+                string selectedUsername = UsernameAutocompleteList.SelectedItem.ToString();
+                UsernameTextBox.Text = selectedUsername;
+                UsernameTextBox.CaretIndex = selectedUsername.Length;
+                UsernameAutocompletePopup.IsOpen = false;
+                UsernameTextBox.Focus();
             }
         }
 

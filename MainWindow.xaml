@@ -126,12 +126,34 @@
                                            Text="Username:"
                                            Style="{StaticResource FieldLabelStyle}"
                                            Margin="0,0,10,0"/>
-                                <TextBox x:Name="UsernameTextBox"
-                                         Grid.Column="1"
-                                         Style="{StaticResource StandardTextBoxStyle}"
-                                         FontSize="18"
-                                         MinHeight="40"
-                                         PreviewKeyDown="UsernameTextBox_PreviewKeyDown"/>
+                                <Grid Grid.Column="1">
+                                    <TextBox x:Name="UsernameTextBox"
+                                             Style="{StaticResource StandardTextBoxStyle}"
+                                             FontSize="18"
+                                             MinHeight="40"
+                                             PreviewKeyDown="UsernameTextBox_PreviewKeyDown"
+                                             TextChanged="UsernameTextBox_TextChanged"/>
+
+                                    <!-- Autocomplete Popup -->
+                                    <Popup x:Name="UsernameAutocompletePopup"
+                                           PlacementTarget="{Binding ElementName=UsernameTextBox}"
+                                           Placement="Bottom"
+                                           StaysOpen="False"
+                                           AllowsTransparency="True"
+                                           Width="{Binding ElementName=UsernameTextBox, Path=ActualWidth}">
+                                        <Border Background="White"
+                                                BorderBrush="{StaticResource BorderBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                MaxHeight="200">
+                                            <ListBox x:Name="UsernameAutocompleteList"
+                                                     BorderThickness="0"
+                                                     FontSize="16"
+                                                     SelectionChanged="UsernameAutocompleteList_SelectionChanged"
+                                                     MouseUp="UsernameAutocompleteList_MouseUp"/>
+                                        </Border>
+                                    </Popup>
+                                </Grid>
                                 <Button x:Name="SearchButton"
                                         Grid.Column="2"
                                         Content="Search"
