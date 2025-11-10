@@ -1155,21 +1155,6 @@ namespace ITTicketingKiosk
         }
 
         /// <summary>
-        /// Handle text changes in Device ComboBox (for Write In mode)
-        /// </summary>
-        private void DeviceComboBox_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            // Hide placeholder when user types in Write In mode
-            if (_isDeviceWriteInMode && DeviceComboBox.IsEditable)
-            {
-                if (!string.IsNullOrWhiteSpace(DeviceComboBox.Text) && DeviceComboBox.Text != "Write In")
-                {
-                    DevicePlaceholder.Visibility = Visibility.Collapsed;
-                }
-            }
-        }
-
-        /// <summary>
         /// Handle key presses in device ComboBox to clear placeholder text
         /// </summary>
         private void DeviceComboBox_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -1177,6 +1162,9 @@ namespace ITTicketingKiosk
             // If in write-in mode and the text is still the placeholder "Write In"
             if (_isDeviceWriteInMode && DeviceComboBox.IsEditable)
             {
+                // Hide the visual placeholder when user starts typing
+                DevicePlaceholder.Visibility = Visibility.Collapsed;
+
                 // Clear placeholder text on first keystroke (except for special keys)
                 if (DeviceComboBox.Text == "Write In" &&
                     e.Key != Key.Tab &&
