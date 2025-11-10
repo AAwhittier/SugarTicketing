@@ -325,6 +325,19 @@ namespace ITTicketingKiosk
             }
         }
 
+        /// <summary>
+        /// Handle Enter key press in Username field to trigger search
+        /// </summary>
+        private void UsernameTextBox_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                // Trigger search button click
+                SearchButton_Click(sender, e);
+                e.Handled = true;
+            }
+        }
+
         private async void SearchButton_Click(object sender, RoutedEventArgs e)
         {
             string username = UsernameTextBox.Text.Trim();
