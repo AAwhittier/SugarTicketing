@@ -349,6 +349,21 @@ namespace ITTicketingKiosk
                 return;
             }
 
+            // Validate username length (minimum 4, maximum 50)
+            if (username.Length < 4)
+            {
+                await ShowMessageDialog("Username Too Short", "Username must be at least 4 characters long");
+                AddStatusMessage("Username must be at least 4 characters", StatusType.Warning);
+                return;
+            }
+
+            if (username.Length > 50)
+            {
+                await ShowMessageDialog("Username Too Long", "Username must be 50 characters or less");
+                AddStatusMessage("Username must be 50 characters or less", StatusType.Warning);
+                return;
+            }
+
             // Parse username from email format if @ is present
             username = ParseUsername(username);
 
@@ -526,6 +541,7 @@ namespace ITTicketingKiosk
                 "225" => "KIS - Kershaw",
                 "874" => "VVHS - Valley View",
                 "1483" => "SSO - Online",
+                "10000" => "DIS - District",
                 _ => schoolId  // Just return the school ID number without "School ID:" prefix
             };
         }
@@ -542,7 +558,8 @@ namespace ITTicketingKiosk
                 "CES",     // 781
                 "KIS",     // 225
                 "VVHS",    // 874
-                "SSO"      // 1483
+                "SSO",     // 1483
+                "DIS"      // 10000
             };
 
             SchoolAffiliationComboBox.ItemsSource = allSchools;
@@ -717,6 +734,13 @@ namespace ITTicketingKiosk
                 return false;
             }
 
+            if (SubjectTextBox.Text.Trim().Length > 50)
+            {
+                _ = ShowMessageDialog("Subject Too Long", "Subject must be 50 characters or less");
+                AddStatusMessage("Subject must be 50 characters or less", StatusType.Warning);
+                return false;
+            }
+
             // Description validation - minimum 4 characters
             if (string.IsNullOrWhiteSpace(DescriptionTextBox.Text))
             {
@@ -729,6 +753,13 @@ namespace ITTicketingKiosk
             {
                 _ = ShowMessageDialog("Description Too Short", "Description must be at least 4 characters long");
                 AddStatusMessage("Description must be at least 4 characters", StatusType.Warning);
+                return false;
+            }
+
+            if (DescriptionTextBox.Text.Trim().Length > 50)
+            {
+                _ = ShowMessageDialog("Description Too Long", "Description must be 50 characters or less");
+                AddStatusMessage("Description must be 50 characters or less", StatusType.Warning);
                 return false;
             }
 
@@ -750,13 +781,20 @@ namespace ITTicketingKiosk
                 return false;
             }
 
-            // If Write In was used, validate minimum 4 characters
+            // If Write In was used, validate minimum 4 and maximum 20 characters
             if (DeviceComboBox.IsEditable && !string.IsNullOrWhiteSpace(DeviceComboBox.Text) && DeviceComboBox.Text != "Write In")
             {
                 if (DeviceComboBox.Text.Trim().Length < 4)
                 {
                     _ = ShowMessageDialog("Device Name Too Short", "Device name must be at least 4 characters long");
                     AddStatusMessage("Device name must be at least 4 characters", StatusType.Warning);
+                    return false;
+                }
+
+                if (DeviceComboBox.Text.Trim().Length > 20)
+                {
+                    _ = ShowMessageDialog("Device Name Too Long", "Device name must be 20 characters or less");
+                    AddStatusMessage("Device name must be 20 characters or less", StatusType.Warning);
                     return false;
                 }
             }
