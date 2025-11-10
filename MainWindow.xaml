@@ -150,7 +150,35 @@
                                                      BorderThickness="0"
                                                      FontSize="16"
                                                      SelectionChanged="UsernameAutocompleteList_SelectionChanged"
-                                                     MouseUp="UsernameAutocompleteList_MouseUp"/>
+                                                     MouseUp="UsernameAutocompleteList_MouseUp">
+                                                <ListBox.ItemContainerStyle>
+                                                    <Style TargetType="ListBoxItem">
+                                                        <Setter Property="Padding" Value="12,14"/>
+                                                        <Setter Property="MinHeight" Value="48"/>
+                                                        <Setter Property="Template">
+                                                            <Setter.Value>
+                                                                <ControlTemplate TargetType="ListBoxItem">
+                                                                    <Border x:Name="Border"
+                                                                            Background="{TemplateBinding Background}"
+                                                                            BorderThickness="0,0,0,1"
+                                                                            BorderBrush="#E0E0E0"
+                                                                            Padding="{TemplateBinding Padding}">
+                                                                        <ContentPresenter/>
+                                                                    </Border>
+                                                                    <ControlTemplate.Triggers>
+                                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                                            <Setter TargetName="Border" Property="Background" Value="#F0F0F0"/>
+                                                                        </Trigger>
+                                                                        <Trigger Property="IsSelected" Value="True">
+                                                                            <Setter TargetName="Border" Property="Background" Value="#E3F2FD"/>
+                                                                        </Trigger>
+                                                                    </ControlTemplate.Triggers>
+                                                                </ControlTemplate>
+                                                            </Setter.Value>
+                                                        </Setter>
+                                                    </Style>
+                                                </ListBox.ItemContainerStyle>
+                                            </ListBox>
                                         </Border>
                                     </Popup>
                                 </Grid>
