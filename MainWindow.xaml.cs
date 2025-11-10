@@ -187,7 +187,7 @@ namespace ITTicketingKiosk
 
                         // Token is valid
                         HideAuthOverlay();
-                        AddStatusMessage("Authenticated - Ready to create tickets", StatusType.Success);
+                        AddStatusMessage(StatusMessageKey.AuthenticatedReady);
 
                         // Initialize username cache
                         _ = UpdateUsernameCacheAsync();
@@ -196,18 +196,18 @@ namespace ITTicketingKiosk
                     catch (Exception ex)
                     {
                         // Token invalid or expired
-                        AddStatusMessage($"Refresh token invalid: {ex.Message}", StatusType.Warning);
+                        AddStatusMessage(StatusMessageKey.RefreshTokenInvalid, ex.Message);
                         CredentialManager.ClearNinjaOneRefreshToken();
                     }
                 }
 
                 // No valid refresh token - show auth overlay
                 ShowAuthOverlay();
-                AddStatusMessage("Authentication required to access ticketing system", StatusType.Warning);
+                AddStatusMessage(StatusMessageKey.AuthenticationRequired);
             }
             catch (Exception ex)
             {
-                AddStatusMessage($"Error checking authentication: {ex.Message}", StatusType.Error);
+                AddStatusMessage(StatusMessageKey.ErrorCheckingAuthentication, ex.Message);
                 ShowAuthOverlay();
             }
         }
@@ -350,23 +350,23 @@ namespace ITTicketingKiosk
 
             if (string.IsNullOrEmpty(username))
             {
-                await ShowMessageDialog("Input Required", "Please enter a username");
-                AddStatusMessage("Please enter a username", StatusType.Warning);
+                await ShowMessageDialog(PopupMessageKey.InputRequired);
+                AddStatusMessage(StatusMessageKey.PleaseEnterUsername);
                 return;
             }
 
             // Validate username length (minimum 4, maximum 50)
             if (username.Length < 4)
             {
-                await ShowMessageDialog("Username Too Short", "Username must be at least 4 characters long");
-                AddStatusMessage("Username must be at least 4 characters", StatusType.Warning);
+                await ShowMessageDialog(PopupMessageKey.UsernameTooShort);
+                AddStatusMessage(StatusMessageKey.UsernameTooShort);
                 return;
             }
 
             if (username.Length > 50)
             {
-                await ShowMessageDialog("Username Too Long", "Username must be 50 characters or less");
-                AddStatusMessage("Username must be 50 characters or less", StatusType.Warning);
+                await ShowMessageDialog(PopupMessageKey.UsernameTooLong);
+                AddStatusMessage(StatusMessageKey.UsernameTooLong);
                 return;
             }
 
