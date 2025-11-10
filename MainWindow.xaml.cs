@@ -48,14 +48,14 @@ namespace ITTicketingKiosk
                 // Check if credentials are configured
                 if (!Config.AreCredentialsConfigured())
                 {
-                    AddStatusMessage("Credentials not configured - please enter API credentials", StatusType.Warning);
+                    AddStatusMessage(StatusMessageKey.CredentialsNotConfigured);
                     await ShowSettingsDialogAsync(isRequired: true);
 
                     // After settings dialog closes, check again
                     if (!Config.AreCredentialsConfigured())
                     {
                         // User still hasn't configured - show error and wait
-                        AddStatusMessage("Application cannot start without credentials", StatusType.Error);
+                        AddStatusMessage(StatusMessageKey.ApplicationCannotStart);
                         ShowAuthOverlay();
                         return;
                     }
@@ -69,7 +69,7 @@ namespace ITTicketingKiosk
             }
             catch (Exception ex)
             {
-                AddStatusMessage($"Initialization error: {ex.Message}", StatusType.Error);
+                AddStatusMessage(StatusMessageKey.InitializationError, ex.Message);
                 ShowAuthOverlay();
             }
         }
@@ -85,11 +85,11 @@ namespace ITTicketingKiosk
                 {
                     _settingsUnlocked = false;
                     SettingsButton.IsEnabled = false;
-                    AddStatusMessage("Test mode disabled - Settings locked", StatusType.Info);
+                    AddStatusMessage(StatusMessageKey.TestModeDisabled);
                 }
                 else
                 {
-                    AddStatusMessage("Test mode enabled - Press F12 to unlock settings", StatusType.Info);
+                    AddStatusMessage(StatusMessageKey.TestModeEnabled);
                 }
 
                 UpdateNavigationButtons();
@@ -100,8 +100,7 @@ namespace ITTicketingKiosk
                 _settingsUnlocked = !_settingsUnlocked;
                 SettingsButton.IsEnabled = _settingsUnlocked;
 
-                string status = _settingsUnlocked ? "unlocked" : "locked";
-                AddStatusMessage($"Settings menu {status}", StatusType.Info);
+                AddStatusMessage(_settingsUnlocked ? StatusMessageKey.SettingsUnlocked : StatusMessageKey.SettingsLocked);
                 e.Handled = true;
             }
         }
@@ -137,29 +136,29 @@ namespace ITTicketingKiosk
                 }
 
                 // Initialize PowerSchool API
-                AddStatusMessage("Initializing PowerSchool API...", StatusType.Info);
+                AddStatusMessage(StatusMessageKey.InitializingPowerSchool);
                 _psApi = new PowerSchoolAPI(
                     Config.PS_BASE_URL,
                     psClientId,
                     psClientSecret
                 );
-                AddStatusMessage("PowerSchool API initialized", StatusType.Success);
+                AddStatusMessage(StatusMessageKey.PowerSchoolInitialized);
 
                 // Initialize NinjaOne API
-                AddStatusMessage("Initializing NinjaOne API...", StatusType.Info);
+                AddStatusMessage(StatusMessageKey.InitializingNinjaOne);
                 _ninjaApi = new NinjaOneAPI(
                     Config.NINJA_BASE_URL,
                     ninjaClientId,
                     ninjaClientSecret,
                     Config.NINJA_ORGANIZATION_ID
                 );
-                AddStatusMessage("NinjaOne API initialized", StatusType.Success);
+                AddStatusMessage(StatusMessageKey.NinjaOneInitialized);
 
-                AddStatusMessage("All APIs initialized successfully", StatusType.Success);
+                AddStatusMessage(StatusMessageKey.AllAPIsInitialized);
             }
             catch (Exception ex)
             {
-                AddStatusMessage($"Failed to initialize APIs: {ex.Message}", StatusType.Error);
+                AddStatusMessage(StatusMessageKey.FailedToInitializeAPIs, ex.Message);
                 _psApi = null;
                 _ninjaApi = null;
                 throw; // Re-throw to be caught by caller
@@ -188,7 +187,7 @@ namespace ITTicketingKiosk
 
                         // Token is valid
                         HideAuthOverlay();
-                        AddStatusMessage("Authenticated - Ready to create tickets", StatusType.Success);
+                        AddStatusMessage(StatusMessageKey.AuthenticatedReady);
 
                         // Initialize username cache
                         _ = UpdateUsernameCacheAsync();
@@ -197,18 +196,18 @@ namespace ITTicketingKiosk
                     catch (Exception ex)
                     {
                         // Token invalid or expired
-                        AddStatusMessage($"Refresh token invalid: {ex.Message}", StatusType.Warning);
+                        AddStatusMessage(StatusMessageKey.RefreshTokenInvalid, ex.Message);
                         CredentialManager.ClearNinjaOneRefreshToken();
                     }
                 }
 
                 // No valid refresh token - show auth overlay
                 ShowAuthOverlay();
-                AddStatusMessage("Authentication required to access ticketing system", StatusType.Warning);
+                AddStatusMessage(StatusMessageKey.AuthenticationRequired);
             }
             catch (Exception ex)
             {
-                AddStatusMessage($"Error checking authentication: {ex.Message}", StatusType.Error);
+                AddStatusMessage(StatusMessageKey.ErrorCheckingAuthentication, ex.Message);
                 ShowAuthOverlay();
             }
         }
@@ -221,7 +220,7 @@ namespace ITTicketingKiosk
             // If credentials aren't configured, open settings instead
             if (!Config.AreCredentialsConfigured() || _ninjaApi == null)
             {
-                AddStatusMessage("Opening settings to configure credentials", StatusType.Info);
+                AddStatusMessage(StatusMessageKey.OpeningSettings);
                 await ShowSettingsDialogAsync(isRequired: true);
                 return;
             }
@@ -234,13 +233,13 @@ namespace ITTicketingKiosk
 
             try
             {
-                AddStatusMessage("Starting OAuth authentication flow...", StatusType.Info);
+                AddStatusMessage(StatusMessageKey.StartingOAuthFlow);
 
                 // Start OAuth flow - opens browser and listens for callback
                 string authCode = await _ninjaApi.StartOAuthFlowAsync();
 
                 AuthStatusText.Text = "Exchanging authorization code for tokens...";
-                AddStatusMessage("Authorization code received, exchanging for tokens...", StatusType.Info);
+                AddStatusMessage(StatusMessageKey.AuthorizationCodeReceived);
 
                 // Exchange code for access and refresh tokens
                 await _ninjaApi.ExchangeCodeForTokensAsync(authCode);
@@ -250,12 +249,12 @@ namespace ITTicketingKiosk
                 CredentialManager.SaveNinjaOneRefreshToken(refreshToken);
 
                 AuthStatusText.Text = "Authentication successful!";
-                AddStatusMessage("Successfully authenticated with NinjaOne", StatusType.Success);
+                AddStatusMessage(StatusMessageKey.AuthenticatedSuccessfully);
 
                 // Hide overlay after short delay
                 await Task.Delay(1000);
                 HideAuthOverlay();
-                AddStatusMessage("Ready to create tickets", StatusType.Info);
+                AddStatusMessage(StatusMessageKey.ReadyToCreateTickets);
 
                 // Initialize username cache
                 _ = UpdateUsernameCacheAsync();
@@ -264,14 +263,14 @@ namespace ITTicketingKiosk
             {
                 AuthStatusText.Text = "Authentication timed out. Please try again.";
                 AuthStatusText.Foreground = new SolidColorBrush(Colors.Red);
-                AddStatusMessage("Authentication timed out - user did not complete sign-in", StatusType.Error);
+                AddStatusMessage(StatusMessageKey.AuthenticationTimedOut);
             }
             catch (Exception ex)
             {
                 AuthStatusText.Text = $"Authentication failed: {ex.Message}";
                 AuthStatusText.Foreground = new SolidColorBrush(Colors.Red);
-                AddStatusMessage($"Authentication error: {ex.Message}", StatusType.Error);
-                await ShowMessageDialog("Authentication Error", ex.Message);
+                AddStatusMessage(StatusMessageKey.AuthenticationError, ex.Message);
+                await ShowMessageDialog(PopupMessageKey.AuthenticationError, ex.Message);
             }
             finally
             {
@@ -351,23 +350,23 @@ namespace ITTicketingKiosk
 
             if (string.IsNullOrEmpty(username))
             {
-                await ShowMessageDialog("Input Required", "Please enter a username");
-                AddStatusMessage("Please enter a username", StatusType.Warning);
+                await ShowMessageDialog(PopupMessageKey.InputRequired);
+                AddStatusMessage(StatusMessageKey.PleaseEnterUsername);
                 return;
             }
 
             // Validate username length (minimum 4, maximum 50)
             if (username.Length < 4)
             {
-                await ShowMessageDialog("Username Too Short", "Username must be at least 4 characters long");
-                AddStatusMessage("Username must be at least 4 characters", StatusType.Warning);
+                await ShowMessageDialog(PopupMessageKey.UsernameTooShort);
+                AddStatusMessage(StatusMessageKey.UsernameTooShort);
                 return;
             }
 
             if (username.Length > 50)
             {
-                await ShowMessageDialog("Username Too Long", "Username must be 50 characters or less");
-                AddStatusMessage("Username must be 50 characters or less", StatusType.Warning);
+                await ShowMessageDialog(PopupMessageKey.UsernameTooLong);
+                AddStatusMessage(StatusMessageKey.UsernameTooLong);
                 return;
             }
 
@@ -375,26 +374,26 @@ namespace ITTicketingKiosk
             username = ParseUsername(username);
 
             SearchButton.IsEnabled = false;
-            AddStatusMessage($"Searching for user: {username}...", StatusType.Info);
+            AddStatusMessage(StatusMessageKey.SearchingForUser, username);
 
             try
             {
                 // Query PowerSchool for device information
-                AddStatusMessage("Querying PowerSchool for devices...", StatusType.Info);
+                AddStatusMessage(StatusMessageKey.QueryingPowerSchool);
                 _currentUser = await _psApi.LookupDevicesAsync(username);
 
                 // Query NinjaOne for user name and email
-                AddStatusMessage("Querying NinjaOne for user details...", StatusType.Info);
+                AddStatusMessage(StatusMessageKey.QueryingNinjaOne);
                 _currentNinjaUser = await _ninjaApi.LookupEndUserAsync(username);
 
                 // Debug logging for NinjaOne lookup
                 if (_currentNinjaUser != null)
                 {
-                    AddStatusMessage($"Found NinjaOne user: {_currentNinjaUser.FullName} ({_currentNinjaUser.Email})", StatusType.Success);
+                    AddStatusMessage(StatusMessageKey.FoundNinjaOneUser, _currentNinjaUser.FullName, _currentNinjaUser.Email);
                 }
                 else
                 {
-                    AddStatusMessage($"NinjaOne user not found for username: '{username}'", StatusType.Warning);
+                    AddStatusMessage(StatusMessageKey.NinjaOneUserNotFound, username);
                 }
 
                 // Check if we found the user in at least one system
@@ -407,21 +406,21 @@ namespace ITTicketingKiosk
                     // Log what we found
                     if (_currentUser != null && _currentNinjaUser != null)
                     {
-                        AddStatusMessage($"User found in both PowerSchool and NinjaOne", StatusType.Success);
+                        AddStatusMessage(StatusMessageKey.UserFoundInBoth);
                     }
                     else if (_currentUser != null)
                     {
-                        AddStatusMessage($"User found in PowerSchool only (devices available)", StatusType.Warning);
+                        AddStatusMessage(StatusMessageKey.UserFoundPowerSchoolOnly);
                     }
                     else
                     {
-                        AddStatusMessage($"User found in NinjaOne only (no devices from PowerSchool)", StatusType.Warning);
+                        AddStatusMessage(StatusMessageKey.UserFoundNinjaOneOnly);
                     }
                 }
                 else
                 {
-                    await ShowMessageDialog("Not Found", "User not found in PowerSchool or NinjaOne. Please check the username.");
-                    AddStatusMessage($"User '{username}' not found in either system", StatusType.Error);
+                    await ShowMessageDialog(PopupMessageKey.UserNotFound);
+                    AddStatusMessage(StatusMessageKey.UserNotFoundInEither, username);
                     ClearUserInfo();
                     ContinueButton.IsEnabled = false;
                     UpdateNavigationButtons();
@@ -429,8 +428,8 @@ namespace ITTicketingKiosk
             }
             catch (Exception ex)
             {
-                await ShowMessageDialog("Error", $"Failed to search:\n{ex.Message}");
-                AddStatusMessage($"Error during search: {ex.Message}", StatusType.Error);
+                await ShowMessageDialog(PopupMessageKey.SearchError, $"Failed to search:\n{ex.Message}");
+                AddStatusMessage(StatusMessageKey.ErrorDuringSearch, ex.Message);
                 ClearUserInfo();
             }
             finally
@@ -459,7 +458,7 @@ namespace ITTicketingKiosk
                     .OrderBy(u => u)
                     .ToList();
 
-                AddStatusMessage($"Cached {_cachedUsernames.Count} usernames for autocomplete", StatusType.Info);
+                AddStatusMessage(StatusMessageKey.CachedUsernames, _cachedUsernames.Count);
                 System.Diagnostics.Debug.WriteLine($"[Autocomplete] Cached {_cachedUsernames.Count} usernames");
             }
             catch (Exception ex)
@@ -568,7 +567,7 @@ namespace ITTicketingKiosk
 
                     if (schoolNames.Count > 1)
                     {
-                        AddStatusMessage($"User affiliated with {schoolNames.Count} schools: {string.Join(", ", schoolNames)}", StatusType.Info);
+                        AddStatusMessage(StatusMessageKey.UserAffiliatedWithSchools, schoolNames.Count, string.Join(", ", schoolNames));
                     }
                 }
                 else
@@ -599,11 +598,11 @@ namespace ITTicketingKiosk
                     _ => "user"
                 };
 
-                AddStatusMessage($"Found {_currentUser.Devices.Count} device(s) for {userTypeDisplay} '{_currentUser.Username}'", StatusType.Success);
+                AddStatusMessage(StatusMessageKey.FoundDevices, _currentUser.Devices.Count, userTypeDisplay, _currentUser.Username);
             }
             else
             {
-                AddStatusMessage("No devices found in PowerSchool", StatusType.Warning);
+                AddStatusMessage(StatusMessageKey.NoDevicesFound);
             }
 
             // Always add "Other" and "Write In" options
@@ -662,7 +661,7 @@ namespace ITTicketingKiosk
             SchoolAffiliationComboBox.ItemsSource = allSchools;
             SchoolAffiliationComboBox.SelectedIndex = -1; // No default selection - user must choose
 
-            AddStatusMessage("School affiliation not found - please select your school", StatusType.Warning);
+            AddStatusMessage(StatusMessageKey.SchoolAffiliationNotFound);
         }
 
         /// <summary>
@@ -679,7 +678,7 @@ namespace ITTicketingKiosk
             if (atIndex > 0)
             {
                 string username = input.Substring(0, atIndex);
-                AddStatusMessage($"Parsed username '{username}' from email format", StatusType.Info);
+                AddStatusMessage(StatusMessageKey.ParsedUsernameFromEmail, username);
                 return username;
             }
 
@@ -710,7 +709,7 @@ namespace ITTicketingKiosk
 
             // Disable button immediately to prevent double-submission
             SubmitButton.IsEnabled = false;
-            AddStatusMessage("Submitting ticket...", StatusType.Info);
+            AddStatusMessage(StatusMessageKey.SubmittingTicket);
 
             try
             {
@@ -756,8 +755,8 @@ namespace ITTicketingKiosk
                 );
 
                 string ticketId = ticket.ContainsKey("id") ? ticket["id"].ToString() : "N/A";
-                await ShowMessageDialog("Success", $"Ticket created successfully!\nTicket ID: {ticketId}");
-                AddStatusMessage($"Ticket #{ticketId} created successfully for {_currentNinjaUser.FullName}", StatusType.Success);
+                await ShowMessageDialog(PopupMessageKey.TicketSuccess, ticketId);
+                AddStatusMessage(StatusMessageKey.TicketCreatedSuccessfully, ticketId, _currentNinjaUser.FullName);
 
                 // Print ticket receipt if enabled
                 if (ReceiptPrinter.IsEnabled())
@@ -766,11 +765,11 @@ namespace ITTicketingKiosk
                     bool printSuccess = ReceiptPrinter.PrintTicketNumber(ticketId, deviceForPrint, SubjectTextBox.Text.Trim());
                     if (printSuccess)
                     {
-                        AddStatusMessage($"Ticket receipt printed", StatusType.Success);
+                        AddStatusMessage(StatusMessageKey.TicketReceiptPrinted);
                     }
                     else
                     {
-                        AddStatusMessage($"Failed to print ticket receipt (check printer status)", StatusType.Warning);
+                        AddStatusMessage(StatusMessageKey.FailedToPrintReceipt);
                     }
                 }
 
@@ -785,14 +784,14 @@ namespace ITTicketingKiosk
                 // Check if it's an authentication error
                 if (ex.Message.Contains("refresh access token") || ex.Message.Contains("Please sign in again"))
                 {
-                    await ShowMessageDialog("Session Expired", "Your session has expired. Please sign in again.");
+                    await ShowMessageDialog(PopupMessageKey.SessionExpired);
                     ShowAuthOverlay();
-                    AddStatusMessage("Session expired - authentication required", StatusType.Warning);
+                    AddStatusMessage(StatusMessageKey.SessionExpired);
                 }
                 else
                 {
-                    await ShowMessageDialog("Error", $"Failed to submit ticket:\n{ex.Message}");
-                    AddStatusMessage($"Error submitting ticket: {ex.Message}", StatusType.Error);
+                    await ShowMessageDialog(PopupMessageKey.TicketSubmitError, $"Failed to submit ticket:\n{ex.Message}");
+                    AddStatusMessage(StatusMessageKey.ErrorSubmittingTicket, ex.Message);
                 }
             }
         }
@@ -803,68 +802,68 @@ namespace ITTicketingKiosk
             // Check if user exists in either PowerSchool OR NinjaOne
             if (_currentUser == null && _currentNinjaUser == null && !_testModeEnabled)
             {
-                _ = ShowMessageDialog("Missing Information", "Please search for a user first");
-                AddStatusMessage("Please search for a user before submitting", StatusType.Warning);
+                _ = ShowMessageDialog(PopupMessageKey.MissingUser);
+                AddStatusMessage(StatusMessageKey.PleaseSearchForUser);
                 return false;
             }
 
             // School affiliation validation - require selection if not auto-selected
             if (SchoolAffiliationComboBox.SelectedItem == null)
             {
-                _ = ShowMessageDialog("Missing Information", "Please select your school affiliation");
-                AddStatusMessage("School affiliation is required", StatusType.Warning);
+                _ = ShowMessageDialog(PopupMessageKey.MissingSchool);
+                AddStatusMessage(StatusMessageKey.SchoolAffiliationRequired);
                 return false;
             }
 
             // Subject validation - minimum 4 characters
             if (string.IsNullOrWhiteSpace(SubjectTextBox.Text))
             {
-                _ = ShowMessageDialog("Missing Information", "Please enter a subject");
-                AddStatusMessage("Subject is required", StatusType.Warning);
+                _ = ShowMessageDialog(PopupMessageKey.MissingSubject);
+                AddStatusMessage(StatusMessageKey.SubjectRequired);
                 return false;
             }
 
             if (SubjectTextBox.Text.Trim().Length < 4)
             {
-                _ = ShowMessageDialog("Subject Too Short", "Subject must be at least 4 characters long");
-                AddStatusMessage("Subject must be at least 4 characters", StatusType.Warning);
+                _ = ShowMessageDialog(PopupMessageKey.SubjectTooShort);
+                AddStatusMessage(StatusMessageKey.SubjectTooShortValidation);
                 return false;
             }
 
             if (SubjectTextBox.Text.Trim().Length > 50)
             {
-                _ = ShowMessageDialog("Subject Too Long", "Subject must be 50 characters or less");
-                AddStatusMessage("Subject must be 50 characters or less", StatusType.Warning);
+                _ = ShowMessageDialog(PopupMessageKey.SubjectTooLong);
+                AddStatusMessage(StatusMessageKey.SubjectTooLongValidation);
                 return false;
             }
 
             // Description validation - minimum 4 characters
             if (string.IsNullOrWhiteSpace(DescriptionTextBox.Text))
             {
-                _ = ShowMessageDialog("Missing Information", "Please enter a description");
-                AddStatusMessage("Description is required", StatusType.Warning);
+                _ = ShowMessageDialog(PopupMessageKey.MissingDescription);
+                AddStatusMessage(StatusMessageKey.DescriptionRequired);
                 return false;
             }
 
             if (DescriptionTextBox.Text.Trim().Length < 4)
             {
-                _ = ShowMessageDialog("Description Too Short", "Description must be at least 4 characters long");
-                AddStatusMessage("Description must be at least 4 characters", StatusType.Warning);
+                _ = ShowMessageDialog(PopupMessageKey.DescriptionTooShort);
+                AddStatusMessage(StatusMessageKey.DescriptionTooShortValidation);
                 return false;
             }
 
             if (DescriptionTextBox.Text.Trim().Length > 50)
             {
-                _ = ShowMessageDialog("Description Too Long", "Description must be 50 characters or less");
-                AddStatusMessage("Description must be 50 characters or less", StatusType.Warning);
+                _ = ShowMessageDialog(PopupMessageKey.DescriptionTooLong);
+                AddStatusMessage(StatusMessageKey.DescriptionTooLongValidation);
                 return false;
             }
 
             // Device validation - accept either selected item OR custom text entry (if Write In was selected)
             if (DeviceComboBox.SelectedItem == null && string.IsNullOrWhiteSpace(DeviceComboBox.Text) && !_testModeEnabled)
             {
-                _ = ShowMessageDialog("Missing Information", "Please select or enter a device");
-                AddStatusMessage("Device selection is required", StatusType.Warning);
+                _ = ShowMessageDialog(PopupMessageKey.MissingDevice);
+                AddStatusMessage(StatusMessageKey.DeviceSelectionRequired);
                 return false;
             }
 
@@ -873,8 +872,8 @@ namespace ITTicketingKiosk
                 DeviceComboBox.Text == "Write In" ||
                 (DeviceComboBox.IsEditable && string.IsNullOrWhiteSpace(DeviceComboBox.Text)))
             {
-                _ = ShowMessageDialog("Missing Information", "Please enter a device name");
-                AddStatusMessage("Device name is required when using Write In", StatusType.Warning);
+                _ = ShowMessageDialog(PopupMessageKey.MissingDeviceName);
+                AddStatusMessage(StatusMessageKey.DeviceNameRequired);
                 return false;
             }
 
@@ -883,15 +882,15 @@ namespace ITTicketingKiosk
             {
                 if (DeviceComboBox.Text.Trim().Length < 4)
                 {
-                    _ = ShowMessageDialog("Device Name Too Short", "Device name must be at least 4 characters long");
-                    AddStatusMessage("Device name must be at least 4 characters", StatusType.Warning);
+                    _ = ShowMessageDialog(PopupMessageKey.DeviceNameTooShort);
+                    AddStatusMessage(StatusMessageKey.DeviceNameTooShortValidation);
                     return false;
                 }
 
                 if (DeviceComboBox.Text.Trim().Length > 20)
                 {
-                    _ = ShowMessageDialog("Device Name Too Long", "Device name must be 20 characters or less");
-                    AddStatusMessage("Device name must be 20 characters or less", StatusType.Warning);
+                    _ = ShowMessageDialog(PopupMessageKey.DeviceNameTooLong);
+                    AddStatusMessage(StatusMessageKey.DeviceNameTooLongValidation);
                     return false;
                 }
             }
@@ -906,7 +905,7 @@ namespace ITTicketingKiosk
             DescriptionTextBox.Text = string.Empty;
             ClearUserInfo();
             NavigateToPage(1);
-            AddStatusMessage("Form reset - Ready for next ticket", StatusType.Info);
+            AddStatusMessage(StatusMessageKey.FormReset);
         }
 
         private void ResetButton_Click(object sender, RoutedEventArgs e)
@@ -940,12 +939,12 @@ namespace ITTicketingKiosk
                 if (result == true)
                 {
                     // Credentials were saved
-                    AddStatusMessage("Credentials saved to Windows Credential Manager", StatusType.Success);
+                    AddStatusMessage(StatusMessageKey.CredentialsSaved);
 
                     // Re-initialize APIs with new credentials
                     try
                     {
-                        AddStatusMessage("Re-initializing APIs with new credentials...", StatusType.Info);
+                        AddStatusMessage(StatusMessageKey.ReinitializingAPIs);
                         InitializeAPIs();
 
                         // Check auth status after initialization
@@ -961,9 +960,9 @@ namespace ITTicketingKiosk
                             errorDetails += $"\n\nInner Exception: {ex.InnerException.Message}";
                         }
 
-                        AddStatusMessage($"Initialization failed: {ex.Message}", StatusType.Error);
+                        AddStatusMessage(StatusMessageKey.InitializationFailed, ex.Message);
 
-                        await ShowMessageDialog("Initialization Error", errorDetails);
+                        await ShowMessageDialog(PopupMessageKey.InitializationError, errorDetails);
 
                         // If this was required setup and failed, show guidance
                         if (isRequired)
@@ -988,18 +987,18 @@ namespace ITTicketingKiosk
                 else if (isRequired)
                 {
                     // User cancelled during required setup - show warning and try again
-                    await ShowMessageDialog("Setup Required", "Credentials are required to use this application. Please configure your API credentials.");
+                    await ShowMessageDialog(PopupMessageKey.SetupRequired);
                     await ShowSettingsDialogAsync(isRequired: true);
                 }
             }
             catch (Exception ex)
             {
-                AddStatusMessage($"Error showing settings dialog: {ex.Message}", StatusType.Error);
+                AddStatusMessage(StatusMessageKey.ErrorShowingSettings, ex.Message);
 
                 // If settings dialog fails to show during required setup, we're stuck
                 if (isRequired)
                 {
-                    await ShowMessageDialog("Critical Error", $"Failed to display settings dialog: {ex.Message}\n\nThe application cannot continue without credentials.");
+                    await ShowMessageDialog(PopupMessageKey.CriticalError, $"Failed to display settings dialog: {ex.Message}\n\nThe application cannot continue without credentials.");
                 }
             }
         }
@@ -1050,7 +1049,7 @@ namespace ITTicketingKiosk
                 // Focus the ComboBox so user can start typing
                 DeviceComboBox.Focus();
 
-                AddStatusMessage("Enter custom device name", StatusType.Info);
+                AddStatusMessage(StatusMessageKey.EnterCustomDeviceName);
             }
             else if (DeviceComboBox.SelectedItem != null && _isDeviceWriteInMode)
             {
@@ -1157,6 +1156,16 @@ namespace ITTicketingKiosk
             StatusScrollViewer.ScrollToEnd();
         }
 
+        /// <summary>
+        /// Add status message using MessageService key
+        /// </summary>
+        private void AddStatusMessage(StatusMessageKey key, params object[] args)
+        {
+            var (message, type) = MessageService.GetStatusMessage(key);
+            string formattedMessage = args.Length > 0 ? string.Format(message, args) : message;
+            AddStatusMessage(formattedMessage, type);
+        }
+
         private async Task ShowMessageDialog(string title, string content)
         {
             await Dispatcher.InvokeAsync(() =>
@@ -1165,12 +1174,14 @@ namespace ITTicketingKiosk
             });
         }
 
-        private enum StatusType
+        /// <summary>
+        /// Show message dialog using MessageService key
+        /// </summary>
+        private async Task ShowMessageDialog(PopupMessageKey key, params object[] args)
         {
-            Info,
-            Success,
-            Warning,
-            Error
+            var (title, content) = MessageService.GetPopupMessage(key);
+            string formattedContent = args.Length > 0 ? string.Format(content, args) : content;
+            await ShowMessageDialog(title, formattedContent);
         }
     }
 
