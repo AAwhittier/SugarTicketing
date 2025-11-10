@@ -299,7 +299,7 @@
                                          AcceptsReturn="True"
                                          VerticalScrollBarVisibility="Auto"
                                          VerticalContentAlignment="Top"
-                                         Height="370"/>
+                                         Height="220"/>
                             </Grid>
 
                             <!-- Submit Button -->
