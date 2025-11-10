@@ -8,6 +8,7 @@
     Title="IT Help Desk - New Ticket"
     Width="1200"
     Height="750"
+    WindowState="Maximized"
     Icon="pack://application:,,,/Assets/sugar_salem_ico.ico"
     Background="{StaticResource AppBackgroundBrush}"
     WindowStartupLocation="CenterScreen">
@@ -298,7 +299,7 @@
                                          AcceptsReturn="True"
                                          VerticalScrollBarVisibility="Auto"
                                          VerticalContentAlignment="Top"
-                                         Height="400"/>
+                                         Height="370"/>
                             </Grid>
 
                             <!-- Submit Button -->
