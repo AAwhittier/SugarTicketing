@@ -24,6 +24,7 @@ namespace ITTicketingKiosk
         private List<string> _cachedUsernames = new List<string>();
         private NinjaEndUser? _kioskUser;
         private System.Threading.CancellationTokenSource? _oauthCancellationTokenSource;
+        private Task? _activeOAuthTask;
 
         public MainWindow()
         {
@@ -111,6 +112,17 @@ namespace ITTicketingKiosk
         {
             try
             {
+                // Clear any active OAuth tasks since we're creating new API instances
+                _activeOAuthTask = null;
+
+                // Cancel any ongoing OAuth attempts
+                if (_oauthCancellationTokenSource != null)
+                {
+                    _oauthCancellationTokenSource.Cancel();
+                    _oauthCancellationTokenSource.Dispose();
+                    _oauthCancellationTokenSource = null;
+                }
+
                 // Get credentials from Credential Manager
                 string psClientId = Config.GetPowerSchoolClientId();
                 string psClientSecret = Config.GetPowerSchoolClientSecret();
@@ -228,15 +240,30 @@ namespace ITTicketingKiosk
                 return;
             }
 
-            // Cancel any existing OAuth flow before starting a new one
+            // If there's an active OAuth task still running, wait for it to complete first
+            if (_activeOAuthTask != null && !_activeOAuthTask.IsCompleted)
+            {
+                AddStatusMessage(StatusMessageKey.AuthenticationError, "Waiting for previous authentication attempt to complete...");
+                try
+                {
+                    // Wait up to 3 seconds for the previous task to complete
+                    await Task.WhenAny(_activeOAuthTask, Task.Delay(3000));
+                }
+                catch
+                {
+                    // Ignore errors from previous task
+                }
+
+                // Give additional time for listener cleanup
+                await Task.Delay(1000);
+            }
+
+            // Cancel any existing cancellation token
             if (_oauthCancellationTokenSource != null)
             {
                 _oauthCancellationTokenSource.Cancel();
                 _oauthCancellationTokenSource.Dispose();
                 _oauthCancellationTokenSource = null;
-
-                // Give a brief moment for the previous listener to clean up
-                await Task.Delay(500);
             }
 
             // Create new cancellation token source for this OAuth attempt
@@ -255,6 +282,13 @@ namespace ITTicketingKiosk
                 Dispatcher.Invoke(() => SignInButton.IsEnabled = true);
             });
 
+            // Track this OAuth attempt
+            _activeOAuthTask = PerformOAuthFlowAsync();
+            await _activeOAuthTask;
+        }
+
+        private async Task PerformOAuthFlowAsync()
+        {
             try
             {
                 AddStatusMessage(StatusMessageKey.StartingOAuthFlow);
@@ -306,10 +340,20 @@ namespace ITTicketingKiosk
             }
             catch (Exception ex)
             {
-                AuthStatusText.Text = $"Authentication failed: {ex.Message}";
-                AuthStatusText.Foreground = new SolidColorBrush(Colors.Red);
-                AddStatusMessage(StatusMessageKey.AuthenticationError, ex.Message);
-                await ShowMessageDialog(PopupMessageKey.AuthenticationError, ex.Message);
+                // Check if this is a state mismatch error
+                if (ex.Message.Contains("OAuth state mismatch"))
+                {
+                    AuthStatusText.Text = "State mismatch detected. Please click Sign In again to retry.";
+                    AuthStatusText.Foreground = new SolidColorBrush(Colors.Orange);
+                    AddStatusMessage(StatusMessageKey.AuthenticationError, "OAuth state mismatch - likely from a previous attempt. Please retry authentication.");
+                }
+                else
+                {
+                    AuthStatusText.Text = $"Authentication failed: {ex.Message}";
+                    AuthStatusText.Foreground = new SolidColorBrush(Colors.Red);
+                    AddStatusMessage(StatusMessageKey.AuthenticationError, ex.Message);
+                    await ShowMessageDialog(PopupMessageKey.AuthenticationError, ex.Message);
+                }
             }
             finally
             {
