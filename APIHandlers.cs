@@ -162,7 +162,7 @@ namespace ITTicketingKiosk
             // Try student query first
             var result = await TryQueryAsync(Config.PS_STUDENT_QUERY, username, "students");
             if (result != null)
-            return result;
+                return result;
 
             // Try teacher query
             result = await TryQueryAsync(Config.PS_TEACHER_QUERY, username, "teachers");

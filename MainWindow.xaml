@@ -402,7 +402,7 @@
                                              AcceptsReturn="True"
                                              VerticalScrollBarVisibility="Auto"
                                              VerticalContentAlignment="Top"
-                                             Height="370"
+                                             Height="220"
                                              GotFocus="DescriptionTextBox_GotFocus"
                                              LostFocus="DescriptionTextBox_LostFocus"
                                              TextChanged="DescriptionTextBox_TextChanged"/>
