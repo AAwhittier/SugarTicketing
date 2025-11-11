@@ -1007,7 +1007,7 @@ namespace ITTicketingKiosk
 
         /// <summary>
         /// Adds a comment to an existing ticket
-        /// Uses multipart/form-data format matching the NinjaOne API curl example
+        /// The comment field must be a JSON object with "public" and "htmlBody" fields
         /// </summary>
         public async Task<Dictionary<string, object>> AddTicketCommentAsync(int ticketId, string commentBody)
         {
@@ -1020,10 +1020,19 @@ namespace ITTicketingKiosk
 
             using (var formData = new MultipartFormDataContent())
             {
-                // Match the curl command format: --form comment=test
-                formData.Add(new StringContent(commentBody), "comment");
+                // Create the comment JSON object (matches PowerShell implementation)
+                var commentObject = new Dictionary<string, object>
+                {
+                    { "public", true },
+                    { "htmlBody", $"<p>{commentBody.Replace("\n", "<br>")}</p>" }
+                };
 
-                System.Diagnostics.Debug.WriteLine($"[NinjaOne] Sending multipart/form-data with field: comment");
+                var commentJson = JsonConvert.SerializeObject(commentObject);
+                System.Diagnostics.Debug.WriteLine($"[NinjaOne] Comment JSON: {commentJson}");
+
+                // Add as JSON content within multipart/form-data
+                var jsonContent = new StringContent(commentJson, Encoding.UTF8, "application/json");
+                formData.Add(jsonContent, "comment");
 
                 var request = new HttpRequestMessage(HttpMethod.Post, commentUrl)
                 {
