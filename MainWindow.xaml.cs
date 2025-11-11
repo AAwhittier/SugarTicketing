@@ -25,6 +25,8 @@ namespace ITTicketingKiosk
         private NinjaEndUser? _kioskUser;
         private System.Threading.CancellationTokenSource? _oauthCancellationTokenSource;
         private Task? _activeOAuthTask;
+        private int? _existingTicketId;
+        private string? _existingTicketSubject;
 
         public MainWindow()
         {
@@ -511,6 +513,9 @@ namespace ITTicketingKiosk
                     {
                         AddStatusMessage(StatusMessageKey.UserFoundNinjaOneOnly);
                     }
+
+                    // Search for open tickets for this user
+                    await SearchForOpenTicketsAsync();
                 }
                 else
                 {
@@ -534,6 +539,109 @@ namespace ITTicketingKiosk
                 // Update username cache after search (whether successful or not)
                 _ = UpdateUsernameCacheAsync();
             }
+        }
+
+        /// <summary>
+        /// Search for open tickets for the current user and prompt if found
+        /// </summary>
+        private async Task SearchForOpenTicketsAsync()
+        {
+            try
+            {
+                // Only search if we have a NinjaOne user (need their name to match)
+                if (_currentNinjaUser == null)
+                {
+                    AddStatusMessage(StatusMessageKey.NoOpenTickets);
+                    return;
+                }
+
+                AddStatusMessage(StatusMessageKey.SearchingOpenTickets);
+
+                // Search for open tickets using board ID 1010
+                var openTickets = await _ninjaApi.SearchOpenTicketsAsync(1010);
+
+                if (openTickets == null || openTickets.Count == 0)
+                {
+                    AddStatusMessage(StatusMessageKey.NoOpenTickets);
+                    return;
+                }
+
+                // Match tickets by requester name
+                string currentUserName = _currentNinjaUser.FullName.Trim().ToLower();
+
+                foreach (var ticket in openTickets)
+                {
+                    // Extract requester name from the ticket
+                    if (ticket.ContainsKey("requester") && ticket["requester"] != null)
+                    {
+                        string requesterName = ticket["requester"].ToString().Trim().ToLower();
+
+                        // Check if the requester name matches the current user
+                        if (requesterName == currentUserName)
+                        {
+                            // Extract ticket ID and subject
+                            int ticketId = Convert.ToInt32(ticket["id"]);
+                            string ticketSubject = ticket.ContainsKey("summary") ? ticket["summary"]?.ToString() ?? "No Subject" : "No Subject";
+
+                            AddStatusMessage(StatusMessageKey.FoundOpenTicket, ticketId, ticketSubject);
+
+                            // Show dialog to ask user what they want to do
+                            var dialog = new TicketChoiceDialog(ticketId, ticketSubject);
+                            bool? result = dialog.ShowDialog();
+
+                            if (result == true)
+                            {
+                                if (dialog.Choice == TicketChoice.Continue)
+                                {
+                                    // Store existing ticket info and navigate to Page 3
+                                    _existingTicketId = ticketId;
+                                    _existingTicketSubject = ticketSubject;
+                                    NavigateToPage3();
+                                }
+                                // else: user chose to file new ticket, continue normal flow
+                            }
+
+                            // Only process the first matching ticket
+                            return;
+                        }
+                    }
+                }
+
+                // No matching tickets found
+                AddStatusMessage(StatusMessageKey.NoOpenTickets);
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't block the user from continuing
+                AddStatusMessage(StatusMessageKey.ErrorSearchingTickets, ex.Message);
+                System.Diagnostics.Debug.WriteLine($"[OpenTickets] Error searching: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Navigate to Page 3 (Add Comment to Existing Ticket)
+        /// </summary>
+        private void NavigateToPage3()
+        {
+            _currentPage = 3;
+
+            // Hide other pages
+            Page1Content.Visibility = Visibility.Collapsed;
+            Page2Content.Visibility = Visibility.Collapsed;
+            Page3Content.Visibility = Visibility.Visible;
+
+            // Populate existing ticket information
+            if (_existingTicketId.HasValue && !string.IsNullOrEmpty(_existingTicketSubject))
+            {
+                ExistingTicketLabel.Text = $"#{_existingTicketId}";
+                ExistingTicketSubjectLabel.Text = _existingTicketSubject;
+            }
+
+            // Clear comment field
+            CommentTextBox.Text = string.Empty;
+            CommentPlaceholder.Visibility = Visibility.Visible;
+
+            UpdateNavigationButtons();
         }
 
         /// <summary>
@@ -952,6 +1060,80 @@ namespace ITTicketingKiosk
             }
         }
 
+        private async void SubmitCommentButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!ValidateCommentForm())
+                return;
+
+            // Disable button immediately to prevent double-submission
+            SubmitCommentButton.IsEnabled = false;
+            AddStatusMessage(StatusMessageKey.AddingCommentToTicket, _existingTicketId);
+
+            try
+            {
+                if (!_existingTicketId.HasValue)
+                {
+                    throw new Exception("No existing ticket ID available");
+                }
+
+                string commentBody = CommentTextBox.Text.Trim();
+
+                // Add comment to the existing ticket
+                var result = await _ninjaApi.AddTicketCommentAsync(_existingTicketId.Value, commentBody);
+
+                await ShowMessageDialog(PopupMessageKey.CommentSuccess, _existingTicketId.Value);
+                AddStatusMessage(StatusMessageKey.CommentAddedSuccessfully, _existingTicketId.Value);
+
+                ResetForm();
+                // Button will be re-enabled when user fills out the form again
+            }
+            catch (Exception ex)
+            {
+                // Re-enable button on error so user can retry
+                SubmitCommentButton.IsEnabled = true;
+
+                // Check if it's an authentication error
+                if (ex.Message.Contains("refresh access token") || ex.Message.Contains("Please sign in again"))
+                {
+                    await ShowMessageDialog(PopupMessageKey.SessionExpired);
+                    ShowAuthOverlay();
+                    AddStatusMessage(StatusMessageKey.SessionExpired);
+                }
+                else
+                {
+                    await ShowMessageDialog(PopupMessageKey.CommentSubmitError, $"Failed to add comment:\n{ex.Message}");
+                    AddStatusMessage(StatusMessageKey.ErrorAddingComment, ex.Message);
+                }
+            }
+        }
+
+        private bool ValidateCommentForm()
+        {
+            // Comment validation - minimum 4 characters, maximum 500
+            if (string.IsNullOrWhiteSpace(CommentTextBox.Text))
+            {
+                _ = ShowMessageDialog(PopupMessageKey.MissingComment);
+                AddStatusMessage(StatusMessageKey.CommentRequired);
+                return false;
+            }
+
+            if (CommentTextBox.Text.Trim().Length < 4)
+            {
+                _ = ShowMessageDialog(PopupMessageKey.CommentTooShort);
+                AddStatusMessage(StatusMessageKey.CommentTooShortValidation);
+                return false;
+            }
+
+            if (CommentTextBox.Text.Trim().Length > 500)
+            {
+                _ = ShowMessageDialog(PopupMessageKey.CommentTooLong);
+                AddStatusMessage(StatusMessageKey.CommentTooLongValidation);
+                return false;
+            }
+
+            return true;
+        }
+
         private bool ValidateForm()
         {
             // In test mode, skip user validation to allow testing page 2
@@ -1059,13 +1241,20 @@ namespace ITTicketingKiosk
             UsernameTextBox.Text = string.Empty;
             SubjectTextBox.Text = string.Empty;
             DescriptionTextBox.Text = string.Empty;
+            CommentTextBox.Text = string.Empty;
             ClearUserInfo();
+
+            // Clear existing ticket information
+            _existingTicketId = null;
+            _existingTicketSubject = null;
+
             NavigateToPage(1);
 
             // Show all placeholders
             UsernamePlaceholder.Visibility = Visibility.Visible;
             SubjectPlaceholder.Visibility = Visibility.Visible;
             DescriptionPlaceholder.Visibility = Visibility.Visible;
+            CommentPlaceholder.Visibility = Visibility.Visible;
             SchoolAffiliationPlaceholder.Visibility = Visibility.Visible;
             DevicePlaceholder.Visibility = Visibility.Visible;
 
@@ -1316,14 +1505,25 @@ namespace ITTicketingKiosk
             {
                 Page1Content.Visibility = Visibility.Visible;
                 Page2Content.Visibility = Visibility.Collapsed;
+                Page3Content.Visibility = Visibility.Collapsed;
             }
             else if (_currentPage == 2)
             {
                 Page1Content.Visibility = Visibility.Collapsed;
                 Page2Content.Visibility = Visibility.Visible;
+                Page3Content.Visibility = Visibility.Collapsed;
 
                 // Re-enable submit button when navigating to page 2
                 SubmitButton.IsEnabled = true;
+            }
+            else if (_currentPage == 3)
+            {
+                Page1Content.Visibility = Visibility.Collapsed;
+                Page2Content.Visibility = Visibility.Collapsed;
+                Page3Content.Visibility = Visibility.Visible;
+
+                // Re-enable submit comment button when navigating to page 3
+                SubmitCommentButton.IsEnabled = true;
             }
 
             UpdateNavigationButtons();
@@ -1467,6 +1667,27 @@ namespace ITTicketingKiosk
             if (DescriptionTextBox.IsFocused)
             {
                 DescriptionPlaceholder.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void CommentTextBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            CommentPlaceholder.Visibility = Visibility.Collapsed;
+        }
+
+        private void CommentTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(CommentTextBox.Text))
+            {
+                CommentPlaceholder.Visibility = Visibility.Visible;
+            }
+        }
+
+        private void CommentTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (CommentTextBox.IsFocused)
+            {
+                CommentPlaceholder.Visibility = Visibility.Collapsed;
             }
         }
 
