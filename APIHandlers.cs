@@ -146,6 +146,27 @@ namespace ITTicketingKiosk
         }
 
         /// <summary>
+        /// Test if the PowerSchool credentials are valid by attempting to get an access token
+        /// </summary>
+        public async Task<bool> TestCredentialsAsync()
+        {
+            try
+            {
+                // Clear any cached token to force a new request
+                _accessToken = null;
+                _tokenExpiry = DateTime.MinValue;
+
+                // Attempt to get a new access token
+                await GetAccessTokenAsync();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
         /// Check if the current token is still valid
         /// </summary>
         private bool IsTokenValid()
@@ -369,6 +390,36 @@ namespace ITTicketingKiosk
         {
             _refreshToken = refreshToken;
             _accessToken = null; // Clear access token to force refresh
+        }
+
+        /// <summary>
+        /// Test if the NinjaOne credentials are valid by attempting to refresh the access token
+        /// Returns true if no refresh token exists (can't test until OAuth completes)
+        /// Returns true/false based on whether refresh succeeds if refresh token exists
+        /// </summary>
+        public async Task<bool> TestCredentialsAsync()
+        {
+            try
+            {
+                // If no refresh token exists yet, we can't test credentials
+                // They will be tested during the OAuth flow
+                if (string.IsNullOrEmpty(_refreshToken))
+                {
+                    return true;
+                }
+
+                // Clear any cached access token to force a new refresh request
+                _accessToken = null;
+                _tokenExpiry = DateTime.MinValue;
+
+                // Attempt to refresh the access token (this validates client credentials)
+                await RefreshAccessTokenAsync();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         /// <summary>
