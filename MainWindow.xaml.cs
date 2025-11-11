@@ -1019,7 +1019,16 @@ namespace ITTicketingKiosk
                         AddStatusMessage(StatusMessageKey.ReinitializingAPIs);
                         InitializeAPIs();
 
-                        // Check auth status after initialization
+                        // Test PowerSchool credentials
+                        AddStatusMessage(StatusMessageKey.TestingPowerSchoolCredentials);
+                        bool psValid = await _psApi.TestCredentialsAsync();
+                        if (!psValid)
+                        {
+                            throw new Exception("PowerSchool credentials are invalid. Please check your Client ID and Client Secret.");
+                        }
+                        AddStatusMessage(StatusMessageKey.PowerSchoolCredentialsValid);
+
+                        // Check NinjaOne auth status after initialization
                         await CheckAuthenticationStatusAsync();
                     }
                     catch (Exception ex)

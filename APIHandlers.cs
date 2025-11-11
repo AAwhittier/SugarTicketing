@@ -146,6 +146,27 @@ namespace ITTicketingKiosk
         }
 
         /// <summary>
+        /// Test if the PowerSchool credentials are valid by attempting to get an access token
+        /// </summary>
+        public async Task<bool> TestCredentialsAsync()
+        {
+            try
+            {
+                // Clear any cached token to force a new request
+                _accessToken = null;
+                _tokenExpiry = DateTime.MinValue;
+
+                // Attempt to get a new access token
+                await GetAccessTokenAsync();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
         /// Check if the current token is still valid
         /// </summary>
         private bool IsTokenValid()
