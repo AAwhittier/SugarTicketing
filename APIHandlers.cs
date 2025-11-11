@@ -1007,7 +1007,7 @@ namespace ITTicketingKiosk
 
         /// <summary>
         /// Adds a comment to an existing ticket
-        /// Uses JSON format with proper data types
+        /// Uses multipart/form-data format matching the NinjaOne API curl example
         /// </summary>
         public async Task<Dictionary<string, object>> AddTicketCommentAsync(int ticketId, string commentBody)
         {
@@ -1018,49 +1018,45 @@ namespace ITTicketingKiosk
             System.Diagnostics.Debug.WriteLine($"[NinjaOne] Comment URL: {commentUrl}");
             System.Diagnostics.Debug.WriteLine($"[NinjaOne] Comment body: {commentBody}");
 
-            // Build JSON payload instead of multipart/form-data
-            var commentData = new Dictionary<string, object>
+            using (var formData = new MultipartFormDataContent())
             {
-                { "public", true },  // boolean, not string
-                { "body", commentBody },
-                { "htmlBody", $"<p>{commentBody.Replace("\n", "<br>")}</p>" }
-            };
+                // Match the curl command format: --form comment=test
+                formData.Add(new StringContent(commentBody), "comment");
 
-            var jsonString = JsonConvert.SerializeObject(commentData);
-            System.Diagnostics.Debug.WriteLine($"[NinjaOne] Comment JSON payload: {jsonString}");
+                System.Diagnostics.Debug.WriteLine($"[NinjaOne] Sending multipart/form-data with field: comment");
 
-            var content = new StringContent(jsonString, Encoding.UTF8, "application/json");
-            var request = new HttpRequestMessage(HttpMethod.Post, commentUrl)
-            {
-                Content = content
-            };
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-
-            try
-            {
-                var response = await _httpClient.SendAsync(request);
-                string responseBody = await response.Content.ReadAsStringAsync();
-
-                System.Diagnostics.Debug.WriteLine($"[NinjaOne] Comment response status: {response.StatusCode}");
-                System.Diagnostics.Debug.WriteLine($"[NinjaOne] Comment response body: {responseBody}");
-
-                response.EnsureSuccessStatusCode();
-
-                return JsonConvert.DeserializeObject<Dictionary<string, object>>(responseBody);
-            }
-            catch (HttpRequestException ex)
-            {
-                string errorDetails = ex.Message;
-                if (ex.InnerException != null)
+                var request = new HttpRequestMessage(HttpMethod.Post, commentUrl)
                 {
-                    errorDetails += $"\nInner: {ex.InnerException.Message}";
+                    Content = formData
+                };
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+                try
+                {
+                    var response = await _httpClient.SendAsync(request);
+                    string responseBody = await response.Content.ReadAsStringAsync();
+
+                    System.Diagnostics.Debug.WriteLine($"[NinjaOne] Comment response status: {response.StatusCode}");
+                    System.Diagnostics.Debug.WriteLine($"[NinjaOne] Comment response body: {responseBody}");
+
+                    response.EnsureSuccessStatusCode();
+
+                    return JsonConvert.DeserializeObject<Dictionary<string, object>>(responseBody);
                 }
-                throw new Exception($"Failed to add comment to ticket: {errorDetails}", ex);
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Failed to add comment to ticket: {ex.Message}", ex);
+                catch (HttpRequestException ex)
+                {
+                    string errorDetails = ex.Message;
+                    if (ex.InnerException != null)
+                    {
+                        errorDetails += $"\nInner: {ex.InnerException.Message}";
+                    }
+                    throw new Exception($"Failed to add comment to ticket: {errorDetails}", ex);
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"Failed to add comment to ticket: {ex.Message}", ex);
+                }
             }
         }
     }
