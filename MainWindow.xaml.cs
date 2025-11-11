@@ -233,6 +233,13 @@ namespace ITTicketingKiosk
             AuthStatusText.Text = "Opening browser for authentication...";
             AuthStatusText.Visibility = Visibility.Visible;
 
+            // Re-enable button after 5 seconds so user can retry if they closed the browser
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(5000);
+                Dispatcher.Invoke(() => SignInButton.IsEnabled = true);
+            });
+
             try
             {
                 AddStatusMessage(StatusMessageKey.StartingOAuthFlow);
