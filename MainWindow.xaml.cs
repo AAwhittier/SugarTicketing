@@ -23,6 +23,7 @@ namespace ITTicketingKiosk
         private bool _isDeviceWriteInMode = false;
         private List<string> _cachedUsernames = new List<string>();
         private NinjaEndUser? _kioskUser;
+        private System.Threading.CancellationTokenSource? _oauthCancellationTokenSource;
 
         public MainWindow()
         {
@@ -227,6 +228,20 @@ namespace ITTicketingKiosk
                 return;
             }
 
+            // Cancel any existing OAuth flow before starting a new one
+            if (_oauthCancellationTokenSource != null)
+            {
+                _oauthCancellationTokenSource.Cancel();
+                _oauthCancellationTokenSource.Dispose();
+                _oauthCancellationTokenSource = null;
+
+                // Give a brief moment for the previous listener to clean up
+                await Task.Delay(500);
+            }
+
+            // Create new cancellation token source for this OAuth attempt
+            _oauthCancellationTokenSource = new System.Threading.CancellationTokenSource();
+
             SignInButton.IsEnabled = false;
             AuthProgressRing.IsIndeterminate = true;
             AuthProgressRing.Visibility = Visibility.Visible;
@@ -274,6 +289,20 @@ namespace ITTicketingKiosk
                 AuthStatusText.Text = "Authentication timed out. Please try again.";
                 AuthStatusText.Foreground = new SolidColorBrush(Colors.Red);
                 AddStatusMessage(StatusMessageKey.AuthenticationTimedOut);
+            }
+            catch (ObjectDisposedException)
+            {
+                // HttpListener was disposed from a previous attempt - this is expected
+                AuthStatusText.Text = "Please click Sign In again to retry authentication.";
+                AuthStatusText.Foreground = new SolidColorBrush(Colors.Orange);
+                AddStatusMessage(StatusMessageKey.AuthenticationError, "Previous authentication session closed. Please try again.");
+            }
+            catch (System.Net.HttpListenerException ex)
+            {
+                // Handle port conflicts or listener issues
+                AuthStatusText.Text = "Authentication error. Please wait a moment and try again.";
+                AuthStatusText.Foreground = new SolidColorBrush(Colors.Red);
+                AddStatusMessage(StatusMessageKey.AuthenticationError, $"Listener error: {ex.Message}");
             }
             catch (Exception ex)
             {
