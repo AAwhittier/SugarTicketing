@@ -1007,7 +1007,7 @@ namespace ITTicketingKiosk
 
         /// <summary>
         /// Adds a comment to an existing ticket
-        /// Uses multipart/form-data format as required by the API
+        /// Uses multipart/form-data format matching the NinjaOne API curl example
         /// </summary>
         public async Task<Dictionary<string, object>> AddTicketCommentAsync(int ticketId, string commentBody)
         {
@@ -1020,19 +1020,17 @@ namespace ITTicketingKiosk
 
             using (var formData = new MultipartFormDataContent())
             {
-                // Add all comment fields including optional ones
-                formData.Add(new StringContent("true"), "comment[public]");
-                formData.Add(new StringContent(commentBody), "comment[body]");
-                formData.Add(new StringContent($"<p>{commentBody.Replace("\n", "<br>")}</p>"), "comment[htmlBody]");
-                formData.Add(new StringContent("false"), "comment[duplicateInIncidents]");
+                // Match the curl command format: --form comment=test
+                formData.Add(new StringContent(commentBody), "comment");
 
-                System.Diagnostics.Debug.WriteLine($"[NinjaOne] Sending multipart/form-data with fields: comment[public], comment[body], comment[htmlBody], comment[duplicateInIncidents]");
+                System.Diagnostics.Debug.WriteLine($"[NinjaOne] Sending multipart/form-data with field: comment");
 
                 var request = new HttpRequestMessage(HttpMethod.Post, commentUrl)
                 {
                     Content = formData
                 };
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
                 try
                 {
