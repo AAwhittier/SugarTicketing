@@ -562,7 +562,17 @@ namespace ITTicketingKiosk
                 AddStatusMessage($"[DEBUG] Searching for tickets for: '{_currentNinjaUser.FullName}' (FirstName: '{_currentNinjaUser.FirstName}', LastName: '{_currentNinjaUser.LastName}')", StatusType.Info);
 
                 // Search for open tickets using board ID 1010
-                var openTickets = await _ninjaApi.SearchOpenTicketsAsync(1010);
+                List<Dictionary<string, object>> openTickets;
+                try
+                {
+                    openTickets = await _ninjaApi.SearchOpenTicketsAsync(1010);
+                    AddStatusMessage($"[DEBUG] API call completed successfully", StatusType.Success);
+                }
+                catch (Exception apiEx)
+                {
+                    AddStatusMessage($"[DEBUG] API call failed: {apiEx.Message}", StatusType.Error);
+                    throw; // Re-throw to be caught by outer catch
+                }
 
                 if (openTickets == null || openTickets.Count == 0)
                 {
