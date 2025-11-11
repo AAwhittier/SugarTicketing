@@ -487,11 +487,17 @@ namespace ITTicketingKiosk
             try
             {
                 // Query PowerSchool for device information
-                AddStatusMessage(StatusMessageKey.QueryingPowerSchool);
+                if (_testModeEnabled)
+                {
+                    AddStatusMessage(StatusMessageKey.QueryingPowerSchool);
+                }
                 _currentUser = await _psApi.LookupDevicesAsync(username);
 
                 // Query NinjaOne for user name and email
-                AddStatusMessage(StatusMessageKey.QueryingNinjaOne);
+                if (_testModeEnabled)
+                {
+                    AddStatusMessage(StatusMessageKey.QueryingNinjaOne);
+                }
                 _currentNinjaUser = await _ninjaApi.LookupEndUserAsync(username);
 
                 // Debug logging for NinjaOne lookup
@@ -568,7 +574,11 @@ namespace ITTicketingKiosk
                     return;
                 }
 
-                AddStatusMessage(StatusMessageKey.SearchingOpenTickets);
+                // Only show in developer/test mode
+                if (_testModeEnabled)
+                {
+                    AddStatusMessage(StatusMessageKey.SearchingOpenTickets);
+                }
                 System.Diagnostics.Debug.WriteLine($"[OpenTickets] Starting search for user: {_currentNinjaUser.FullName}");
 
                 // Search for open tickets using board ID 1010
@@ -722,7 +732,11 @@ namespace ITTicketingKiosk
                     .OrderBy(u => u)
                     .ToList();
 
-                AddStatusMessage(StatusMessageKey.CachedUsernames, _cachedUsernames.Count);
+                // Only show in developer/test mode
+                if (_testModeEnabled)
+                {
+                    AddStatusMessage(StatusMessageKey.CachedUsernames, _cachedUsernames.Count);
+                }
                 System.Diagnostics.Debug.WriteLine($"[Autocomplete] Cached {_cachedUsernames.Count} usernames");
             }
             catch (Exception ex)
@@ -1641,6 +1655,14 @@ namespace ITTicketingKiosk
             string formatted = $"[{timestamp}] {icon} {message}\n\n";
 
             StatusTextBlock.Text += formatted;
+
+            // Cap to last 30 messages to prevent memory/performance issues
+            var messages = StatusTextBlock.Text.Split(new[] { "\n\n" }, StringSplitOptions.RemoveEmptyEntries);
+            if (messages.Length > 30)
+            {
+                // Keep only the last 30 messages
+                StatusTextBlock.Text = string.Join("\n\n", messages.Skip(messages.Length - 30)) + "\n\n";
+            }
 
             // Scroll to bottom to show latest message
             StatusScrollViewer.ScrollToEnd();
