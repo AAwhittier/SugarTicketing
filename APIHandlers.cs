@@ -916,6 +916,126 @@ namespace ITTicketingKiosk
                 throw new Exception($"Failed to create ticket: {ex.Message}", ex);
             }
         }
+
+        /// <summary>
+        /// Searches for open tickets on a specific board (board ID 1010 for open tickets)
+        /// Returns list of tickets with their details including requester name
+        /// </summary>
+        public async Task<List<Dictionary<string, object>>> SearchOpenTicketsAsync(int boardId = 1010)
+        {
+            string token = await GetAccessTokenAsync();
+            string boardUrl = $"{_baseUrl}/v2/ticketing/trigger/board/{boardId}/run";
+
+            var searchPayload = new Dictionary<string, object>
+            {
+                { "sortBy", new List<Dictionary<string, string>>
+                    {
+                        new Dictionary<string, string>
+                        {
+                            { "field", "id" },
+                            { "direction", "DESC" }
+                        }
+                    }
+                },
+                { "filters", new List<object>() },
+                { "pageSize", 50 },
+                { "searchCriteria", "" },
+                { "includeColumns", new List<string> { "id", "summary", "requester", "status" } },
+                { "lastCursorId", 0 }
+            };
+
+            var jsonString = JsonConvert.SerializeObject(searchPayload);
+            System.Diagnostics.Debug.WriteLine($"[NinjaOne] Searching board {boardId} for open tickets");
+
+            var content = new StringContent(jsonString, Encoding.UTF8, "application/json");
+            var request = new HttpRequestMessage(HttpMethod.Post, boardUrl)
+            {
+                Content = content
+            };
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+            try
+            {
+                var response = await _httpClient.SendAsync(request);
+                string responseBody = await response.Content.ReadAsStringAsync();
+
+                System.Diagnostics.Debug.WriteLine($"[NinjaOne] Board search status: {response.StatusCode}");
+                System.Diagnostics.Debug.WriteLine($"[NinjaOne] Board search response: {responseBody}");
+
+                response.EnsureSuccessStatusCode();
+
+                var result = JsonConvert.DeserializeObject<Dictionary<string, object>>(responseBody);
+
+                // Extract the results array from the response
+                if (result != null && result.ContainsKey("results"))
+                {
+                    var resultsJson = result["results"].ToString();
+                    var tickets = JsonConvert.DeserializeObject<List<Dictionary<string, object>>>(resultsJson);
+                    System.Diagnostics.Debug.WriteLine($"[NinjaOne] Found {tickets?.Count ?? 0} open tickets");
+                    return tickets ?? new List<Dictionary<string, object>>();
+                }
+
+                return new List<Dictionary<string, object>>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[NinjaOne] ERROR in SearchOpenTicketsAsync: {ex.Message}");
+                throw new Exception($"Failed to search open tickets: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// Adds a comment to an existing ticket
+        /// Uses multipart/form-data format as required by the API
+        /// </summary>
+        public async Task<Dictionary<string, object>> AddTicketCommentAsync(int ticketId, string commentBody)
+        {
+            string token = await GetAccessTokenAsync();
+            string commentUrl = $"{_baseUrl}/v2/ticketing/ticket/{ticketId}/comment";
+
+            System.Diagnostics.Debug.WriteLine($"[NinjaOne] Adding comment to ticket {ticketId}");
+
+            using (var formData = new MultipartFormDataContent())
+            {
+                // Add the comment object with required fields
+                formData.Add(new StringContent("true"), "comment[public]");
+                formData.Add(new StringContent(commentBody), "comment[body]");
+                formData.Add(new StringContent($"<p>{commentBody.Replace("\n", "<br>")}</p>"), "comment[htmlBody]");
+
+                var request = new HttpRequestMessage(HttpMethod.Post, commentUrl)
+                {
+                    Content = formData
+                };
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+                try
+                {
+                    var response = await _httpClient.SendAsync(request);
+                    string responseBody = await response.Content.ReadAsStringAsync();
+
+                    System.Diagnostics.Debug.WriteLine($"[NinjaOne] Comment response status: {response.StatusCode}");
+                    System.Diagnostics.Debug.WriteLine($"[NinjaOne] Comment response body: {responseBody}");
+
+                    response.EnsureSuccessStatusCode();
+
+                    return JsonConvert.DeserializeObject<Dictionary<string, object>>(responseBody);
+                }
+                catch (HttpRequestException ex)
+                {
+                    string errorDetails = ex.Message;
+                    if (ex.InnerException != null)
+                    {
+                        errorDetails += $"\nInner: {ex.InnerException.Message}";
+                    }
+                    throw new Exception($"Failed to add comment to ticket: {errorDetails}", ex);
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"Failed to add comment to ticket: {ex.Message}", ex);
+                }
+            }
+        }
     }
 
     /// <summary>

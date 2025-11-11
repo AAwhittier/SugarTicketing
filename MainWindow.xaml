@@ -421,8 +421,100 @@
 
                             <!-- Submit Button -->
                             <Button x:Name="SubmitButton"
-                                    Content="Submit Ticket" 
+                                    Content="Submit Ticket"
                                     Click="SubmitButton_Click"
+                                    Style="{StaticResource SubmitButtonStyle}"
+                                    HorizontalAlignment="Center"
+                                    Margin="0,10,0,0"/>
+                        </StackPanel>
+
+                        <!-- Page 3: Add Comment to Existing Ticket -->
+                        <StackPanel x:Name="Page3Content" Visibility="Collapsed" Margin="0,10,0,0">
+                            <!-- Existing Ticket Info -->
+                            <Border Style="{StaticResource InsetPanelStyle}" Margin="0,0,0,15">
+                                <StackPanel>
+                                    <TextBlock Text="Adding Comment to Existing Ticket"
+                                               FontSize="18"
+                                               FontWeight="SemiBold"
+                                               Foreground="{StaticResource PrimaryTextBrush}"
+                                               Margin="0,0,0,10"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Grid.Column="0"
+                                                   Text="Ticket:"
+                                                   Style="{StaticResource InfoLabelStyle}"
+                                                   Margin="0,0,10,0"/>
+                                        <TextBlock x:Name="ExistingTicketLabel"
+                                                   Grid.Column="1"
+                                                   Style="{StaticResource InfoValueStyle}"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Subject (Read-only display) -->
+                            <Grid Margin="0,0,0,15">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Column="0"
+                                           Text="Subject:"
+                                           Style="{StaticResource FieldLabelStyle}"
+                                           Margin="0,0,10,0"/>
+
+                                <TextBlock x:Name="ExistingTicketSubjectLabel"
+                                           Grid.Column="1"
+                                           Style="{StaticResource InfoValueStyle}"
+                                           FontSize="16"
+                                           TextWrapping="Wrap"/>
+                            </Grid>
+
+                            <!-- Comment -->
+                            <Grid Margin="0,0,0,15">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0"
+                                           Text="Add Comment:"
+                                           Style="{StaticResource FieldLabelStyle}"
+                                           Margin="0,0,0,10"/>
+
+                                <Grid Grid.Row="1">
+                                    <TextBox x:Name="CommentTextBox"
+                                             Style="{StaticResource StandardTextBoxStyle}"
+                                             FontSize="16"
+                                             TextWrapping="Wrap"
+                                             AcceptsReturn="True"
+                                             VerticalScrollBarVisibility="Auto"
+                                             VerticalContentAlignment="Top"
+                                             Height="220"
+                                             GotFocus="CommentTextBox_GotFocus"
+                                             LostFocus="CommentTextBox_LostFocus"
+                                             TextChanged="CommentTextBox_TextChanged"/>
+
+                                    <!-- Placeholder Text -->
+                                    <TextBlock x:Name="CommentPlaceholder"
+                                               Text="Add additional information or updates to your ticket..."
+                                               FontSize="16"
+                                               Foreground="#999999"
+                                               VerticalAlignment="Top"
+                                               Margin="8,10,0,0"
+                                               IsHitTestVisible="False"
+                                               Visibility="Visible"/>
+                                </Grid>
+                            </Grid>
+
+                            <!-- Submit Comment Button -->
+                            <Button x:Name="SubmitCommentButton"
+                                    Content="Submit Comment"
+                                    Click="SubmitCommentButton_Click"
                                     Style="{StaticResource SubmitButtonStyle}"
                                     HorizontalAlignment="Center"
                                     Margin="0,10,0,0"/>

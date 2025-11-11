@@ -30,7 +30,13 @@ namespace ITTicketingKiosk
         SetupRequired,
         InitializationError,
         CriticalError,
-        AuthenticationError
+        AuthenticationError,
+        ExistingTicketFound,
+        MissingComment,
+        CommentTooShort,
+        CommentTooLong,
+        CommentSuccess,
+        CommentSubmitError
     }
 
     /// <summary>
@@ -109,7 +115,17 @@ namespace ITTicketingKiosk
         InitializationFailed,
         ErrorShowingSettings,
         EnterCustomDeviceName,
-        UsingKioskFallback
+        UsingKioskFallback,
+        SearchingOpenTickets,
+        FoundOpenTicket,
+        NoOpenTickets,
+        ErrorSearchingTickets,
+        AddingCommentToTicket,
+        CommentAddedSuccessfully,
+        ErrorAddingComment,
+        CommentRequired,
+        CommentTooShortValidation,
+        CommentTooLongValidation
     }
 
     /// <summary>
@@ -159,6 +175,12 @@ namespace ITTicketingKiosk
                 PopupMessageKey.InitializationError => ("Initialization Error", "{0}"),
                 PopupMessageKey.CriticalError => ("Critical Error", "{0}"),
                 PopupMessageKey.AuthenticationError => ("Authentication Error", "{0}"),
+                PopupMessageKey.ExistingTicketFound => ("Open Ticket Found", "You have an open ticket: \"{0}\"\n\nWould you like to add a comment to this ticket or file a new one?"),
+                PopupMessageKey.MissingComment => ("Missing Information", "Please enter a comment"),
+                PopupMessageKey.CommentTooShort => ("Comment Too Short", "Comment must be at least 4 characters long"),
+                PopupMessageKey.CommentTooLong => ("Comment Too Long", "Comment must be 500 characters or less"),
+                PopupMessageKey.CommentSuccess => ("Success", "Comment added successfully to ticket #{0}"),
+                PopupMessageKey.CommentSubmitError => ("Error", "{0}"),
                 _ => ("Unknown", "An unknown error occurred")
             };
         }
@@ -242,6 +264,16 @@ namespace ITTicketingKiosk
                 StatusMessageKey.ErrorShowingSettings => ("Error showing settings dialog: {0}", StatusType.Error),
                 StatusMessageKey.EnterCustomDeviceName => ("Enter custom device name", StatusType.Info),
                 StatusMessageKey.UsingKioskFallback => ("User '{0}' not in NinjaOne - using kiosk account for ticket submission", StatusType.Info),
+                StatusMessageKey.SearchingOpenTickets => ("Searching for open tickets...", StatusType.Info),
+                StatusMessageKey.FoundOpenTicket => ("Found open ticket #{0}: {1}", StatusType.Success),
+                StatusMessageKey.NoOpenTickets => ("No open tickets found - proceeding with new ticket", StatusType.Info),
+                StatusMessageKey.ErrorSearchingTickets => ("Error searching for open tickets: {0}", StatusType.Warning),
+                StatusMessageKey.AddingCommentToTicket => ("Adding comment to ticket #{0}...", StatusType.Info),
+                StatusMessageKey.CommentAddedSuccessfully => ("Comment added successfully to ticket #{0}", StatusType.Success),
+                StatusMessageKey.ErrorAddingComment => ("Error adding comment: {0}", StatusType.Error),
+                StatusMessageKey.CommentRequired => ("Comment is required", StatusType.Warning),
+                StatusMessageKey.CommentTooShortValidation => ("Comment must be at least 4 characters", StatusType.Warning),
+                StatusMessageKey.CommentTooLongValidation => ("Comment must be 500 characters or less", StatusType.Warning),
                 _ => ("Unknown status message", StatusType.Info)
             };
         }
