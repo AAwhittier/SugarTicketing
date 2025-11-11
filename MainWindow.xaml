@@ -438,41 +438,36 @@
                                                FontWeight="SemiBold"
                                                Foreground="{StaticResource PrimaryTextBrush}"
                                                Margin="0,0,0,10"/>
+
+                                    <!-- Ticket and Subject in same row (50/50 split) -->
                                     <Grid>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
 
-                                        <TextBlock Grid.Column="0"
-                                                   Text="Ticket:"
-                                                   Style="{StaticResource InfoLabelStyle}"
-                                                   Margin="0,0,10,0"/>
-                                        <TextBlock x:Name="ExistingTicketLabel"
-                                                   Grid.Column="1"
-                                                   Style="{StaticResource InfoValueStyle}"/>
+                                        <!-- Ticket (Left 50%) -->
+                                        <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                            <TextBlock Text="Ticket:"
+                                                       Style="{StaticResource InfoLabelStyle}"
+                                                       Margin="0,0,0,5"/>
+                                            <TextBlock x:Name="ExistingTicketLabel"
+                                                       Style="{StaticResource InfoValueStyle}"/>
+                                        </StackPanel>
+
+                                        <!-- Subject (Right 50%) -->
+                                        <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                            <TextBlock Text="Subject:"
+                                                       Style="{StaticResource InfoLabelStyle}"
+                                                       Margin="0,0,0,5"/>
+                                            <TextBlock x:Name="ExistingTicketSubjectLabel"
+                                                       Style="{StaticResource InfoValueStyle}"
+                                                       FontSize="16"
+                                                       TextWrapping="Wrap"/>
+                                        </StackPanel>
                                     </Grid>
                                 </StackPanel>
                             </Border>
-
-                            <!-- Subject (Read-only display) -->
-                            <Grid Margin="0,0,0,15">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-
-                                <TextBlock Grid.Column="0"
-                                           Text="Subject:"
-                                           Style="{StaticResource FieldLabelStyle}"
-                                           Margin="0,0,10,0"/>
-
-                                <TextBlock x:Name="ExistingTicketSubjectLabel"
-                                           Grid.Column="1"
-                                           Style="{StaticResource InfoValueStyle}"
-                                           FontSize="16"
-                                           TextWrapping="Wrap"/>
-                            </Grid>
 
                             <!-- Comment -->
                             <Grid Margin="0,0,0,15">
