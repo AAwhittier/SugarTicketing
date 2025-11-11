@@ -1020,10 +1020,11 @@ namespace ITTicketingKiosk
 
             using (var formData = new MultipartFormDataContent())
             {
-                // Match the curl command format: --form comment=test
+                // Match the curl command format: --form comment=test --form files=
                 formData.Add(new StringContent(commentBody), "comment");
+                formData.Add(new StringContent(""), "files");
 
-                System.Diagnostics.Debug.WriteLine($"[NinjaOne] Sending multipart/form-data with field: comment");
+                System.Diagnostics.Debug.WriteLine($"[NinjaOne] Sending multipart/form-data with fields: comment, files");
 
                 var request = new HttpRequestMessage(HttpMethod.Post, commentUrl)
                 {
