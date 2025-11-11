@@ -946,6 +946,8 @@ namespace ITTicketingKiosk
 
             var jsonString = JsonConvert.SerializeObject(searchPayload);
             System.Diagnostics.Debug.WriteLine($"[NinjaOne] Searching board {boardId} for open tickets");
+            System.Diagnostics.Debug.WriteLine($"[NinjaOne] Request URL: {boardUrl}");
+            System.Diagnostics.Debug.WriteLine($"[NinjaOne] Request payload: {jsonString}");
 
             var content = new StringContent(jsonString, Encoding.UTF8, "application/json");
             var request = new HttpRequestMessage(HttpMethod.Post, boardUrl)
@@ -960,20 +962,37 @@ namespace ITTicketingKiosk
                 var response = await _httpClient.SendAsync(request);
                 string responseBody = await response.Content.ReadAsStringAsync();
 
-                System.Diagnostics.Debug.WriteLine($"[NinjaOne] Board search status: {response.StatusCode}");
-                System.Diagnostics.Debug.WriteLine($"[NinjaOne] Board search response: {responseBody}");
+                System.Diagnostics.Debug.WriteLine($"[NinjaOne] Board search status: {response.StatusCode} ({(int)response.StatusCode})");
+                System.Diagnostics.Debug.WriteLine($"[NinjaOne] Response length: {responseBody.Length} characters");
+                System.Diagnostics.Debug.WriteLine($"[NinjaOne] Board search response (first 1000 chars): {(responseBody.Length > 1000 ? responseBody.Substring(0, 1000) + "..." : responseBody)}");
 
-                response.EnsureSuccessStatusCode();
+                // Don't throw on non-success - return the status code info instead
+                if (!response.IsSuccessStatusCode)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[NinjaOne] ERROR: Non-success status code: {response.StatusCode}");
+                    throw new Exception($"Board search returned status code {response.StatusCode}: {responseBody}");
+                }
 
                 var result = JsonConvert.DeserializeObject<Dictionary<string, object>>(responseBody);
+                System.Diagnostics.Debug.WriteLine($"[NinjaOne] Deserialized result keys: {string.Join(", ", result?.Keys ?? new string[0])}");
 
                 // Extract the results array from the response
                 if (result != null && result.ContainsKey("results"))
                 {
-                    var resultsJson = result["results"].ToString();
+                    var resultsValue = result["results"];
+                    System.Diagnostics.Debug.WriteLine($"[NinjaOne] Results value type: {resultsValue?.GetType().Name ?? "null"}");
+
+                    var resultsJson = resultsValue.ToString();
+                    System.Diagnostics.Debug.WriteLine($"[NinjaOne] Results JSON length: {resultsJson.Length}");
+
                     var tickets = JsonConvert.DeserializeObject<List<Dictionary<string, object>>>(resultsJson);
-                    System.Diagnostics.Debug.WriteLine($"[NinjaOne] Found {tickets?.Count ?? 0} open tickets");
+                    System.Diagnostics.Debug.WriteLine($"[NinjaOne] Successfully deserialized {tickets?.Count ?? 0} tickets");
+
                     return tickets ?? new List<Dictionary<string, object>>();
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[NinjaOne] Response does not contain 'results' key");
                 }
 
                 return new List<Dictionary<string, object>>();
@@ -981,6 +1000,7 @@ namespace ITTicketingKiosk
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[NinjaOne] ERROR in SearchOpenTicketsAsync: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[NinjaOne] Stack trace: {ex.StackTrace}");
                 throw new Exception($"Failed to search open tickets: {ex.Message}", ex);
             }
         }
