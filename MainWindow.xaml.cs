@@ -543,6 +543,9 @@ namespace ITTicketingKiosk
                 UsernameTextBox.Text = selectedUsername;
                 UsernameTextBox.CaretIndex = selectedUsername.Length;
                 UsernameAutocompletePopup.IsOpen = false;
+
+                // Automatically trigger search for the selected user
+                SearchButton_Click(SearchButton, new RoutedEventArgs());
             }
         }
 
@@ -558,6 +561,9 @@ namespace ITTicketingKiosk
                 UsernameTextBox.CaretIndex = selectedUsername.Length;
                 UsernameAutocompletePopup.IsOpen = false;
                 UsernameTextBox.Focus();
+
+                // Automatically trigger search for the selected user
+                SearchButton_Click(SearchButton, new RoutedEventArgs());
             }
         }
 

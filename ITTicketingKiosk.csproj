@@ -7,6 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <ApplicationIcon>Assets\sugar_salem_ico.ico</ApplicationIcon>
+    <AssemblyName>Sugar Salem Ticketing</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
