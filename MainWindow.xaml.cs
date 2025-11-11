@@ -1028,6 +1028,15 @@ namespace ITTicketingKiosk
                         }
                         AddStatusMessage(StatusMessageKey.PowerSchoolCredentialsValid);
 
+                        // Test NinjaOne credentials (if refresh token exists)
+                        AddStatusMessage(StatusMessageKey.TestingNinjaOneCredentials);
+                        bool ninjaValid = await _ninjaApi.TestCredentialsAsync();
+                        if (!ninjaValid)
+                        {
+                            throw new Exception("NinjaOne credentials are invalid. Please check your Client ID and Client Secret.");
+                        }
+                        AddStatusMessage(StatusMessageKey.NinjaOneCredentialsValid);
+
                         // Check NinjaOne auth status after initialization
                         await CheckAuthenticationStatusAsync();
                     }
