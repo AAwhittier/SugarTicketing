@@ -28,6 +28,8 @@ namespace ITTicketingKiosk
         private int? _existingTicketId;
         private string? _existingTicketSubject;
         private bool _isContinueTicketMode = false;
+        private bool _isSearching = false;
+        private bool _isTicketDialogShowing = false;
 
         public MainWindow()
         {
@@ -444,6 +446,13 @@ namespace ITTicketingKiosk
 
         private async void SearchButton_Click(object sender, RoutedEventArgs e)
         {
+            // Prevent duplicate searches
+            if (_isSearching)
+            {
+                System.Diagnostics.Debug.WriteLine("[Search] Search already in progress, ignoring duplicate request");
+                return;
+            }
+
             string username = UsernameTextBox.Text.Trim();
 
             if (string.IsNullOrEmpty(username))
@@ -471,6 +480,7 @@ namespace ITTicketingKiosk
             // Parse username from email format if @ is present
             username = ParseUsername(username);
 
+            _isSearching = true;
             SearchButton.IsEnabled = false;
             AddStatusMessage(StatusMessageKey.SearchingForUser, username);
 
@@ -535,6 +545,7 @@ namespace ITTicketingKiosk
             }
             finally
             {
+                _isSearching = false;
                 SearchButton.IsEnabled = true;
 
                 // Update username cache after search (whether successful or not)
@@ -601,6 +612,13 @@ namespace ITTicketingKiosk
 
                         if (isMatch)
                         {
+                            // Prevent showing dialog twice
+                            if (_isTicketDialogShowing)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[OpenTickets] Dialog already showing, skipping duplicate");
+                                return;
+                            }
+
                             // Extract ticket ID and subject
                             int ticketId = Convert.ToInt32(ticket["id"]);
                             string ticketSubject = ticket.ContainsKey("summary") ? ticket["summary"]?.ToString() ?? "No Subject" : "No Subject";
@@ -609,19 +627,27 @@ namespace ITTicketingKiosk
                             AddStatusMessage(StatusMessageKey.FoundOpenTicket, ticketId, ticketSubject);
 
                             // Show dialog to ask user what they want to do
-                            var dialog = new TicketChoiceDialog(ticketId, ticketSubject);
-                            bool? result = dialog.ShowDialog();
-
-                            if (result == true)
+                            _isTicketDialogShowing = true;
+                            try
                             {
-                                if (dialog.Choice == TicketChoice.Continue)
+                                var dialog = new TicketChoiceDialog(ticketId, ticketSubject);
+                                bool? result = dialog.ShowDialog();
+
+                                if (result == true)
                                 {
-                                    // Store existing ticket info and navigate to Page 3
-                                    _existingTicketId = ticketId;
-                                    _existingTicketSubject = ticketSubject;
-                                    NavigateToPage3();
+                                    if (dialog.Choice == TicketChoice.Continue)
+                                    {
+                                        // Store existing ticket info and navigate to Page 3
+                                        _existingTicketId = ticketId;
+                                        _existingTicketSubject = ticketSubject;
+                                        NavigateToPage3();
+                                    }
+                                    // else: user chose to file new ticket, continue normal flow
                                 }
-                                // else: user chose to file new ticket, continue normal flow
+                            }
+                            finally
+                            {
+                                _isTicketDialogShowing = false;
                             }
 
                             // Only process the first matching ticket
