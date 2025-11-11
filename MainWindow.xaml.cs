@@ -552,54 +552,34 @@ namespace ITTicketingKiosk
                 if (_currentNinjaUser == null)
                 {
                     System.Diagnostics.Debug.WriteLine("[OpenTickets] No NinjaOne user - skipping ticket search");
-                    AddStatusMessage("[DEBUG] No NinjaOne user - skipping ticket search", StatusType.Info);
                     AddStatusMessage(StatusMessageKey.NoOpenTickets);
                     return;
                 }
 
                 AddStatusMessage(StatusMessageKey.SearchingOpenTickets);
                 System.Diagnostics.Debug.WriteLine($"[OpenTickets] Starting search for user: {_currentNinjaUser.FullName}");
-                AddStatusMessage($"[DEBUG] Searching for tickets for: '{_currentNinjaUser.FullName}' (FirstName: '{_currentNinjaUser.FirstName}', LastName: '{_currentNinjaUser.LastName}')", StatusType.Info);
 
                 // Search for open tickets using board ID 1010
-                List<Dictionary<string, object>> openTickets;
-                try
-                {
-                    openTickets = await _ninjaApi.SearchOpenTicketsAsync(1010);
-                    AddStatusMessage($"[DEBUG] API call completed successfully", StatusType.Success);
-                }
-                catch (Exception apiEx)
-                {
-                    AddStatusMessage($"[DEBUG] API call failed: {apiEx.Message}", StatusType.Error);
-                    throw; // Re-throw to be caught by outer catch
-                }
+                var openTickets = await _ninjaApi.SearchOpenTicketsAsync(1010);
 
                 if (openTickets == null || openTickets.Count == 0)
                 {
                     System.Diagnostics.Debug.WriteLine("[OpenTickets] No open tickets returned from API");
-                    AddStatusMessage("[DEBUG] No open tickets returned from board 1010", StatusType.Info);
                     AddStatusMessage(StatusMessageKey.NoOpenTickets);
                     return;
                 }
 
                 System.Diagnostics.Debug.WriteLine($"[OpenTickets] Found {openTickets.Count} open tickets total");
-                AddStatusMessage($"[DEBUG] Found {openTickets.Count} open tickets from API", StatusType.Info);
 
                 // Match tickets by requester name
                 string currentUserName = _currentNinjaUser.FullName.Trim().ToLower();
-                System.Diagnostics.Debug.WriteLine($"[OpenTickets] Looking for matches with current user name (normalized): '{currentUserName}'");
-                System.Diagnostics.Debug.WriteLine($"[OpenTickets] Original FullName: '{_currentNinjaUser.FullName}'");
-                System.Diagnostics.Debug.WriteLine($"[OpenTickets] FirstName: '{_currentNinjaUser.FirstName}', LastName: '{_currentNinjaUser.LastName}'");
-                AddStatusMessage($"[DEBUG] Looking for matches with normalized name: '{currentUserName}'", StatusType.Info);
+                System.Diagnostics.Debug.WriteLine($"[OpenTickets] Looking for matches with: '{currentUserName}'");
 
                 int ticketIndex = 0;
                 foreach (var ticket in openTickets)
                 {
                     ticketIndex++;
                     System.Diagnostics.Debug.WriteLine($"[OpenTickets] --- Checking ticket #{ticketIndex} ---");
-
-                    // Log all keys in the ticket for debugging
-                    System.Diagnostics.Debug.WriteLine($"[OpenTickets] Ticket keys: {string.Join(", ", ticket.Keys)}");
 
                     // Extract ticket ID for logging
                     string ticketIdStr = ticket.ContainsKey("id") ? ticket["id"]?.ToString() ?? "N/A" : "N/A";
@@ -609,13 +589,10 @@ namespace ITTicketingKiosk
                     if (ticket.ContainsKey("requester") && ticket["requester"] != null)
                     {
                         var requesterValue = ticket["requester"];
-                        System.Diagnostics.Debug.WriteLine($"[OpenTickets] Requester value type: {requesterValue.GetType().Name}");
                         System.Diagnostics.Debug.WriteLine($"[OpenTickets] Requester raw value: '{requesterValue}'");
-                        AddStatusMessage($"[DEBUG] Ticket {ticketIdStr} - Requester: '{requesterValue}'", StatusType.Info);
 
                         string requesterName = requesterValue.ToString().Trim().ToLower();
                         System.Diagnostics.Debug.WriteLine($"[OpenTickets] Requester normalized: '{requesterName}'");
-                        AddStatusMessage($"[DEBUG] Normalized: '{requesterName}' vs '{currentUserName}' - Match: {requesterName == currentUserName}", StatusType.Info);
 
                         // Check if the requester name matches the current user
                         bool isMatch = requesterName == currentUserName;
@@ -653,7 +630,6 @@ namespace ITTicketingKiosk
                     else
                     {
                         System.Diagnostics.Debug.WriteLine($"[OpenTickets] Ticket has no 'requester' field or it is null");
-                        AddStatusMessage($"[DEBUG] Ticket {ticketIdStr} has no 'requester' field", StatusType.Warning);
                     }
 
                     System.Diagnostics.Debug.WriteLine($"[OpenTickets] --- End ticket #{ticketIndex} ---\n");
@@ -661,7 +637,6 @@ namespace ITTicketingKiosk
 
                 // No matching tickets found
                 System.Diagnostics.Debug.WriteLine($"[OpenTickets] No matching tickets found after checking {ticketIndex} tickets");
-                AddStatusMessage($"[DEBUG] No matching tickets found after checking {ticketIndex} tickets", StatusType.Info);
                 AddStatusMessage(StatusMessageKey.NoOpenTickets);
             }
             catch (Exception ex)
