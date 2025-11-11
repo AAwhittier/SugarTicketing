@@ -551,38 +551,66 @@ namespace ITTicketingKiosk
                 // Only search if we have a NinjaOne user (need their name to match)
                 if (_currentNinjaUser == null)
                 {
+                    System.Diagnostics.Debug.WriteLine("[OpenTickets] No NinjaOne user - skipping ticket search");
                     AddStatusMessage(StatusMessageKey.NoOpenTickets);
                     return;
                 }
 
                 AddStatusMessage(StatusMessageKey.SearchingOpenTickets);
+                System.Diagnostics.Debug.WriteLine($"[OpenTickets] Starting search for user: {_currentNinjaUser.FullName}");
 
                 // Search for open tickets using board ID 1010
                 var openTickets = await _ninjaApi.SearchOpenTicketsAsync(1010);
 
                 if (openTickets == null || openTickets.Count == 0)
                 {
+                    System.Diagnostics.Debug.WriteLine("[OpenTickets] No open tickets returned from API");
                     AddStatusMessage(StatusMessageKey.NoOpenTickets);
                     return;
                 }
 
+                System.Diagnostics.Debug.WriteLine($"[OpenTickets] Found {openTickets.Count} open tickets total");
+
                 // Match tickets by requester name
                 string currentUserName = _currentNinjaUser.FullName.Trim().ToLower();
+                System.Diagnostics.Debug.WriteLine($"[OpenTickets] Looking for matches with current user name (normalized): '{currentUserName}'");
+                System.Diagnostics.Debug.WriteLine($"[OpenTickets] Original FullName: '{_currentNinjaUser.FullName}'");
+                System.Diagnostics.Debug.WriteLine($"[OpenTickets] FirstName: '{_currentNinjaUser.FirstName}', LastName: '{_currentNinjaUser.LastName}'");
 
+                int ticketIndex = 0;
                 foreach (var ticket in openTickets)
                 {
+                    ticketIndex++;
+                    System.Diagnostics.Debug.WriteLine($"[OpenTickets] --- Checking ticket #{ticketIndex} ---");
+
+                    // Log all keys in the ticket for debugging
+                    System.Diagnostics.Debug.WriteLine($"[OpenTickets] Ticket keys: {string.Join(", ", ticket.Keys)}");
+
+                    // Extract ticket ID for logging
+                    string ticketIdStr = ticket.ContainsKey("id") ? ticket["id"]?.ToString() ?? "N/A" : "N/A";
+                    System.Diagnostics.Debug.WriteLine($"[OpenTickets] Ticket ID: {ticketIdStr}");
+
                     // Extract requester name from the ticket
                     if (ticket.ContainsKey("requester") && ticket["requester"] != null)
                     {
-                        string requesterName = ticket["requester"].ToString().Trim().ToLower();
+                        var requesterValue = ticket["requester"];
+                        System.Diagnostics.Debug.WriteLine($"[OpenTickets] Requester value type: {requesterValue.GetType().Name}");
+                        System.Diagnostics.Debug.WriteLine($"[OpenTickets] Requester raw value: '{requesterValue}'");
+
+                        string requesterName = requesterValue.ToString().Trim().ToLower();
+                        System.Diagnostics.Debug.WriteLine($"[OpenTickets] Requester normalized: '{requesterName}'");
 
                         // Check if the requester name matches the current user
-                        if (requesterName == currentUserName)
+                        bool isMatch = requesterName == currentUserName;
+                        System.Diagnostics.Debug.WriteLine($"[OpenTickets] Match result: {isMatch}");
+
+                        if (isMatch)
                         {
                             // Extract ticket ID and subject
                             int ticketId = Convert.ToInt32(ticket["id"]);
                             string ticketSubject = ticket.ContainsKey("summary") ? ticket["summary"]?.ToString() ?? "No Subject" : "No Subject";
 
+                            System.Diagnostics.Debug.WriteLine($"[OpenTickets] ✓ MATCH FOUND! Ticket #{ticketId}: {ticketSubject}");
                             AddStatusMessage(StatusMessageKey.FoundOpenTicket, ticketId, ticketSubject);
 
                             // Show dialog to ask user what they want to do
@@ -605,9 +633,16 @@ namespace ITTicketingKiosk
                             return;
                         }
                     }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[OpenTickets] Ticket has no 'requester' field or it is null");
+                    }
+
+                    System.Diagnostics.Debug.WriteLine($"[OpenTickets] --- End ticket #{ticketIndex} ---\n");
                 }
 
                 // No matching tickets found
+                System.Diagnostics.Debug.WriteLine($"[OpenTickets] No matching tickets found after checking {ticketIndex} tickets");
                 AddStatusMessage(StatusMessageKey.NoOpenTickets);
             }
             catch (Exception ex)
@@ -615,6 +650,7 @@ namespace ITTicketingKiosk
                 // Log error but don't block the user from continuing
                 AddStatusMessage(StatusMessageKey.ErrorSearchingTickets, ex.Message);
                 System.Diagnostics.Debug.WriteLine($"[OpenTickets] Error searching: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[OpenTickets] Stack trace: {ex.StackTrace}");
             }
         }
 
