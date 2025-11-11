@@ -631,9 +631,9 @@ namespace ITTicketingKiosk
             }
             catch (Exception ex)
             {
-                // If refresh token is invalid, clear it
-                _refreshToken = null;
-                _accessToken = null;
+                // Don't clear the refresh token here - it might still be valid
+                // The token could be valid but the credentials might be invalid
+                // Let the caller decide whether to clear the token
                 throw new Exception($"Failed to refresh access token: {ex.Message}. Please sign in again.", ex);
             }
         }

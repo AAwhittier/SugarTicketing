@@ -166,6 +166,15 @@ namespace ITTicketingKiosk
                     ninjaClientSecret,
                     Config.NINJA_ORGANIZATION_ID
                 );
+
+                // Load existing refresh token from Windows Credential Manager if it exists
+                // This allows us to test new credentials with the existing token
+                string existingRefreshToken = CredentialManager.GetNinjaOneRefreshToken();
+                if (!string.IsNullOrEmpty(existingRefreshToken))
+                {
+                    _ninjaApi.SetRefreshToken(existingRefreshToken);
+                }
+
                 AddStatusMessage(StatusMessageKey.NinjaOneInitialized);
 
                 AddStatusMessage(StatusMessageKey.AllAPIsInitialized);
@@ -210,9 +219,12 @@ namespace ITTicketingKiosk
                     }
                     catch (Exception ex)
                     {
-                        // Token invalid or expired
+                        // Token invalid or expired - clear it from storage
                         AddStatusMessage(StatusMessageKey.RefreshTokenInvalid, ex.Message);
                         CredentialManager.ClearNinjaOneRefreshToken();
+
+                        // Also clear from API instance
+                        _ninjaApi.SetRefreshToken(null);
                     }
                 }
 
@@ -1113,7 +1125,19 @@ namespace ITTicketingKiosk
                         bool ninjaValid = await _ninjaApi.TestCredentialsAsync();
                         if (!ninjaValid)
                         {
-                            throw new Exception("NinjaOne credentials are invalid. Please check your Client ID and Client Secret.");
+                            // Check if we have a refresh token - affects error message
+                            string existingToken = CredentialManager.GetNinjaOneRefreshToken();
+                            if (!string.IsNullOrEmpty(existingToken))
+                            {
+                                throw new Exception("Failed to validate NinjaOne credentials with existing refresh token. This could mean:\n\n" +
+                                    "1. The Client ID or Client Secret is incorrect\n" +
+                                    "2. The stored refresh token has expired\n\n" +
+                                    "Please verify your credentials are correct. If they are, you may need to sign in again to obtain a new refresh token.");
+                            }
+                            else
+                            {
+                                throw new Exception("NinjaOne credentials are invalid. Please check your Client ID and Client Secret.");
+                            }
                         }
                         AddStatusMessage(StatusMessageKey.NinjaOneCredentialsValid);
 
