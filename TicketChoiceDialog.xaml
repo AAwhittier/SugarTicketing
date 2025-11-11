@@ -5,7 +5,7 @@
     Title="Open Ticket Found"
     Width="550"
     SizeToContent="Height"
-    WindowStartupLocation="CenterOwner"
+    WindowStartupLocation="CenterScreen"
     Background="White"
     ResizeMode="NoResize">
 

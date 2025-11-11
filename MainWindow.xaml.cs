@@ -27,6 +27,7 @@ namespace ITTicketingKiosk
         private Task? _activeOAuthTask;
         private int? _existingTicketId;
         private string? _existingTicketSubject;
+        private bool _isContinueTicketMode = false;
 
         public MainWindow()
         {
@@ -654,6 +655,7 @@ namespace ITTicketingKiosk
         private void NavigateToPage3()
         {
             _currentPage = 3;
+            _isContinueTicketMode = true; // Track that we're in continue ticket mode
 
             // Hide other pages
             Page1Content.Visibility = Visibility.Collapsed;
@@ -670,6 +672,9 @@ namespace ITTicketingKiosk
             // Clear comment field
             CommentTextBox.Text = string.Empty;
             CommentPlaceholder.Visibility = Visibility.Visible;
+
+            // Re-enable submit button (in case we're navigating here again)
+            SubmitCommentButton.IsEnabled = true;
 
             UpdateNavigationButtons();
         }
@@ -1277,6 +1282,7 @@ namespace ITTicketingKiosk
             // Clear existing ticket information
             _existingTicketId = null;
             _existingTicketSubject = null;
+            _isContinueTicketMode = false;
 
             NavigateToPage(1);
 
@@ -1420,7 +1426,16 @@ namespace ITTicketingKiosk
         {
             if (_currentPage > 1)
             {
-                NavigateToPage(_currentPage - 1);
+                // If on Page 3 (continue ticket mode), go directly back to Page 1
+                if (_currentPage == 3 && _isContinueTicketMode)
+                {
+                    _isContinueTicketMode = false; // Exit continue ticket mode
+                    NavigateToPage(1);
+                }
+                else
+                {
+                    NavigateToPage(_currentPage - 1);
+                }
             }
         }
 
