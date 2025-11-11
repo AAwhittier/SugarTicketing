@@ -1015,13 +1015,18 @@ namespace ITTicketingKiosk
             string commentUrl = $"{_baseUrl}/v2/ticketing/ticket/{ticketId}/comment";
 
             System.Diagnostics.Debug.WriteLine($"[NinjaOne] Adding comment to ticket {ticketId}");
+            System.Diagnostics.Debug.WriteLine($"[NinjaOne] Comment URL: {commentUrl}");
+            System.Diagnostics.Debug.WriteLine($"[NinjaOne] Comment body: {commentBody}");
 
             using (var formData = new MultipartFormDataContent())
             {
-                // Add the comment object with required fields
-                formData.Add(new StringContent("true"), "comment[public]");
-                formData.Add(new StringContent(commentBody), "comment[body]");
-                formData.Add(new StringContent($"<p>{commentBody.Replace("\n", "<br>")}</p>"), "comment[htmlBody]");
+                // Add the comment fields - try without brackets first
+                formData.Add(new StringContent("true"), "public");
+                formData.Add(new StringContent(commentBody), "body");
+                formData.Add(new StringContent($"<p>{commentBody.Replace("\n", "<br>")}</p>"), "htmlBody");
+
+                System.Diagnostics.Debug.WriteLine($"[NinjaOne] Form data boundary: {formData.Headers.ContentType?.Parameters.FirstOrDefault(p => p.Name == "boundary")?.Value}");
+                System.Diagnostics.Debug.WriteLine($"[NinjaOne] Sending multipart/form-data with fields: public, body, htmlBody");
 
                 var request = new HttpRequestMessage(HttpMethod.Post, commentUrl)
                 {
