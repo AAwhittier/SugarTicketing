@@ -16,7 +16,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="Assets\sugar_salem_ico.ico" />
     <Resource Include="Assets\sugar_salem_ico.ico" />
     <None Remove="Assets\sugar_salem_splash_screen.png" />
     <SplashScreen Include="Assets\sugar_salem_splash_screen.png" />
