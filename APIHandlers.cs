@@ -976,23 +976,23 @@ namespace ITTicketingKiosk
                 var result = JsonConvert.DeserializeObject<Dictionary<string, object>>(responseBody);
                 System.Diagnostics.Debug.WriteLine($"[NinjaOne] Deserialized result keys: {string.Join(", ", result?.Keys ?? new string[0])}");
 
-                // Extract the results array from the response
-                if (result != null && result.ContainsKey("results"))
+                // Extract the data array from the response (NinjaOne uses "data" not "results")
+                if (result != null && result.ContainsKey("data"))
                 {
-                    var resultsValue = result["results"];
-                    System.Diagnostics.Debug.WriteLine($"[NinjaOne] Results value type: {resultsValue?.GetType().Name ?? "null"}");
+                    var dataValue = result["data"];
+                    System.Diagnostics.Debug.WriteLine($"[NinjaOne] Data value type: {dataValue?.GetType().Name ?? "null"}");
 
-                    var resultsJson = resultsValue.ToString();
-                    System.Diagnostics.Debug.WriteLine($"[NinjaOne] Results JSON length: {resultsJson.Length}");
+                    var dataJson = dataValue.ToString();
+                    System.Diagnostics.Debug.WriteLine($"[NinjaOne] Data JSON length: {dataJson.Length}");
 
-                    var tickets = JsonConvert.DeserializeObject<List<Dictionary<string, object>>>(resultsJson);
+                    var tickets = JsonConvert.DeserializeObject<List<Dictionary<string, object>>>(dataJson);
                     System.Diagnostics.Debug.WriteLine($"[NinjaOne] Successfully deserialized {tickets?.Count ?? 0} tickets");
 
                     return tickets ?? new List<Dictionary<string, object>>();
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine($"[NinjaOne] Response does not contain 'results' key");
+                    System.Diagnostics.Debug.WriteLine($"[NinjaOne] Response does not contain 'data' key");
                 }
 
                 return new List<Dictionary<string, object>>();
