@@ -600,7 +600,10 @@ namespace ITTicketingKiosk
                 if (_currentNinjaUser == null)
                 {
                     System.Diagnostics.Debug.WriteLine("[OpenTickets] No NinjaOne user - skipping ticket search");
-                    AddStatusMessage(StatusMessageKey.NoOpenTickets);
+                    if (_testModeEnabled)
+                    {
+                        AddStatusMessage(StatusMessageKey.NoOpenTickets);
+                    }
                     return;
                 }
 
@@ -617,7 +620,10 @@ namespace ITTicketingKiosk
                 if (openTickets == null || openTickets.Count == 0)
                 {
                     System.Diagnostics.Debug.WriteLine("[OpenTickets] No open tickets returned from API");
-                    AddStatusMessage(StatusMessageKey.NoOpenTickets);
+                    if (_testModeEnabled)
+                    {
+                        AddStatusMessage(StatusMessageKey.NoOpenTickets);
+                    }
                     return;
                 }
 
@@ -703,7 +709,10 @@ namespace ITTicketingKiosk
 
                 // No matching tickets found
                 System.Diagnostics.Debug.WriteLine($"[OpenTickets] No matching tickets found after checking {ticketIndex} tickets");
-                AddStatusMessage(StatusMessageKey.NoOpenTickets);
+                if (_testModeEnabled)
+                {
+                    AddStatusMessage(StatusMessageKey.NoOpenTickets);
+                }
             }
             catch (Exception ex)
             {
