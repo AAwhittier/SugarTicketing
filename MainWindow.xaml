@@ -475,7 +475,7 @@
                                              AcceptsReturn="True"
                                              VerticalScrollBarVisibility="Auto"
                                              VerticalContentAlignment="Top"
-                                             Height="220"
+                                             Height="190"
                                              GotFocus="CommentTextBox_GotFocus"
                                              LostFocus="CommentTextBox_LostFocus"
                                              TextChanged="CommentTextBox_TextChanged"/>
