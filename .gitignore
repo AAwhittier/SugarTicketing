@@ -203,3 +203,7 @@ rcf/
 !*.txt
 !*.yaml
 !*.yml
+
+
+# Ignore WPF temp project files
+*_wpftmp.csproj
