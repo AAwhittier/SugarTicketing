@@ -11,10 +11,11 @@ using System.Windows.Media.Imaging;
 
 namespace ITTicketingKiosk
 {
-    public partial class MainWindow : Window
+    public partial class MainWindow : Window, IDisposable
     {
         private PowerSchoolAPI? _psApi;
         private NinjaOneAPI? _ninjaApi;
+        private bool _disposed = false;
         private UserData? _currentUser;
         private NinjaEndUser? _currentNinjaUser;
         private int _currentPage = 1;
@@ -29,7 +30,7 @@ namespace ITTicketingKiosk
         private string? _existingTicketSubject;
         private bool _isContinueTicketMode = false;
         private bool _isSearching = false;
-        private bool _isTicketDialogShowing = false;
+        private readonly System.Threading.SemaphoreSlim _dialogSemaphore = new System.Threading.SemaphoreSlim(1, 1);
 
         public MainWindow()
         {
@@ -117,6 +118,10 @@ namespace ITTicketingKiosk
         {
             try
             {
+                // Dispose old API instances before creating new ones
+                _psApi?.Dispose();
+                _ninjaApi?.Dispose();
+
                 // Clear any active OAuth tasks since we're creating new API instances
                 _activeOAuthTask = null;
 
@@ -249,59 +254,66 @@ namespace ITTicketingKiosk
         /// </summary>
         private async void SignInButton_Click(object sender, RoutedEventArgs e)
         {
-            // If credentials aren't configured, open settings instead
-            if (!Config.AreCredentialsConfigured() || _ninjaApi == null)
+            try
             {
-                AddStatusMessage(StatusMessageKey.OpeningSettings);
-                await ShowSettingsDialogAsync(isRequired: true);
-                return;
-            }
-
-            // If there's an active OAuth task still running, wait for it to complete first
-            if (_activeOAuthTask != null && !_activeOAuthTask.IsCompleted)
-            {
-                AddStatusMessage(StatusMessageKey.AuthenticationError, "Waiting for previous authentication attempt to complete...");
-                try
+                // If credentials aren't configured, open settings instead
+                if (!Config.AreCredentialsConfigured() || _ninjaApi == null)
                 {
-                    // Wait up to 3 seconds for the previous task to complete
-                    await Task.WhenAny(_activeOAuthTask, Task.Delay(3000));
-                }
-                catch
-                {
-                    // Ignore errors from previous task
+                    AddStatusMessage(StatusMessageKey.OpeningSettings);
+                    await ShowSettingsDialogAsync(isRequired: true);
+                    return;
                 }
 
-                // Give additional time for listener cleanup
-                await Task.Delay(1000);
+                // If there's an active OAuth task still running, wait for it to complete first
+                if (_activeOAuthTask != null && !_activeOAuthTask.IsCompleted)
+                {
+                    AddStatusMessage(StatusMessageKey.AuthenticationError, "Waiting for previous authentication attempt to complete...");
+                    try
+                    {
+                        // Wait up to 3 seconds for the previous task to complete
+                        await Task.WhenAny(_activeOAuthTask, Task.Delay(3000));
+                    }
+                    catch
+                    {
+                        // Ignore errors from previous task
+                    }
+
+                    // Give additional time for listener cleanup
+                    await Task.Delay(1000);
+                }
+
+                // Cancel any existing cancellation token
+                if (_oauthCancellationTokenSource != null)
+                {
+                    _oauthCancellationTokenSource.Cancel();
+                    _oauthCancellationTokenSource.Dispose();
+                    _oauthCancellationTokenSource = null;
+                }
+
+                // Create new cancellation token source for this OAuth attempt
+                _oauthCancellationTokenSource = new System.Threading.CancellationTokenSource();
+
+                SignInButton.IsEnabled = false;
+                AuthProgressRing.IsIndeterminate = true;
+                AuthProgressRing.Visibility = Visibility.Visible;
+                AuthStatusText.Text = "Opening browser for authentication...";
+                AuthStatusText.Visibility = Visibility.Visible;
+
+                // Re-enable button after 5 seconds so user can retry if they closed the browser
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(5000);
+                    Dispatcher.Invoke(() => SignInButton.IsEnabled = true);
+                });
+
+                // Track this OAuth attempt
+                _activeOAuthTask = PerformOAuthFlowAsync();
+                await _activeOAuthTask;
             }
-
-            // Cancel any existing cancellation token
-            if (_oauthCancellationTokenSource != null)
+            catch (Exception ex)
             {
-                _oauthCancellationTokenSource.Cancel();
-                _oauthCancellationTokenSource.Dispose();
-                _oauthCancellationTokenSource = null;
+                HandleUnexpectedError(ex, "authentication");
             }
-
-            // Create new cancellation token source for this OAuth attempt
-            _oauthCancellationTokenSource = new System.Threading.CancellationTokenSource();
-
-            SignInButton.IsEnabled = false;
-            AuthProgressRing.IsIndeterminate = true;
-            AuthProgressRing.Visibility = Visibility.Visible;
-            AuthStatusText.Text = "Opening browser for authentication...";
-            AuthStatusText.Visibility = Visibility.Visible;
-
-            // Re-enable button after 5 seconds so user can retry if they closed the browser
-            _ = Task.Run(async () =>
-            {
-                await Task.Delay(5000);
-                Dispatcher.Invoke(() => SignInButton.IsEnabled = true);
-            });
-
-            // Track this OAuth attempt
-            _activeOAuthTask = PerformOAuthFlowAsync();
-            await _activeOAuthTask;
         }
 
         private async Task PerformOAuthFlowAsync()
@@ -446,127 +458,134 @@ namespace ITTicketingKiosk
 
         private async void SearchButton_Click(object sender, RoutedEventArgs e)
         {
-            // Prevent duplicate searches
-            if (_isSearching)
-            {
-                System.Diagnostics.Debug.WriteLine("[Search] Search already in progress, ignoring duplicate request");
-                return;
-            }
-
-            string username = UsernameTextBox.Text.Trim();
-
-            if (string.IsNullOrEmpty(username))
-            {
-                await ShowMessageDialog(PopupMessageKey.InputRequired);
-                AddStatusMessage(StatusMessageKey.PleaseEnterUsername);
-                return;
-            }
-
-            // Validate username length (minimum 4, maximum 50)
-            if (username.Length < 4)
-            {
-                await ShowMessageDialog(PopupMessageKey.UsernameTooShort);
-                AddStatusMessage(StatusMessageKey.UsernameTooShort);
-                return;
-            }
-
-            if (username.Length > 50)
-            {
-                await ShowMessageDialog(PopupMessageKey.UsernameTooLong);
-                AddStatusMessage(StatusMessageKey.UsernameTooLong);
-                return;
-            }
-
-            // Parse username from email format if @ is present
-            username = ParseUsername(username);
-
-            _isSearching = true;
-            SearchButton.IsEnabled = false;
-            AddStatusMessage(StatusMessageKey.SearchingForUser, username);
-
             try
             {
-                // Query PowerSchool for device information
-                if (_testModeEnabled)
+                // Prevent duplicate searches
+                if (_isSearching)
                 {
-                    AddStatusMessage(StatusMessageKey.QueryingPowerSchool);
-                }
-                _currentUser = await _psApi.LookupDevicesAsync(username);
-
-                // Query NinjaOne for user name and email
-                if (_testModeEnabled)
-                {
-                    AddStatusMessage(StatusMessageKey.QueryingNinjaOne);
-                }
-                _currentNinjaUser = await _ninjaApi.LookupEndUserAsync(username);
-
-                // Debug logging for NinjaOne lookup
-                if (_currentNinjaUser != null)
-                {
-                    AddStatusMessage(StatusMessageKey.FoundNinjaOneUser, _currentNinjaUser.FullName, _currentNinjaUser.Email);
-                }
-                else
-                {
-                    AddStatusMessage(StatusMessageKey.NinjaOneUserNotFound, username);
+                    System.Diagnostics.Debug.WriteLine("[Search] Search already in progress, ignoring duplicate request");
+                    return;
                 }
 
-                // Check if we found the user in at least one system
-                if (_currentUser != null || _currentNinjaUser != null)
-                {
-                    PopulateUserInfo();
-                    ContinueButton.IsEnabled = true;
-                    UpdateNavigationButtons();
+                string username = UsernameTextBox.Text.Trim();
 
-                    // Log what we found
-                    if (_currentUser != null && _currentNinjaUser != null)
+                if (string.IsNullOrEmpty(username))
+                {
+                    await ShowMessageDialog(PopupMessageKey.InputRequired);
+                    AddStatusMessage(StatusMessageKey.PleaseEnterUsername);
+                    return;
+                }
+
+                // Validate username length (minimum 4, maximum 50)
+                if (username.Length < 4)
+                {
+                    await ShowMessageDialog(PopupMessageKey.UsernameTooShort);
+                    AddStatusMessage(StatusMessageKey.UsernameTooShort);
+                    return;
+                }
+
+                if (username.Length > 50)
+                {
+                    await ShowMessageDialog(PopupMessageKey.UsernameTooLong);
+                    AddStatusMessage(StatusMessageKey.UsernameTooLong);
+                    return;
+                }
+
+                // Parse username from email format if @ is present
+                username = ParseUsername(username);
+
+                _isSearching = true;
+                SearchButton.IsEnabled = false;
+                AddStatusMessage(StatusMessageKey.SearchingForUser, username);
+
+                try
+                {
+                    // Query PowerSchool for device information
+                    if (_testModeEnabled)
                     {
-                        AddStatusMessage(StatusMessageKey.UserFoundInBoth);
+                        AddStatusMessage(StatusMessageKey.QueryingPowerSchool);
                     }
-                    else if (_currentUser != null)
+                    _currentUser = await _psApi.LookupDevicesAsync(username);
+
+                    // Query NinjaOne for user name and email
+                    if (_testModeEnabled)
                     {
-                        AddStatusMessage(StatusMessageKey.UserFoundPowerSchoolOnly);
+                        AddStatusMessage(StatusMessageKey.QueryingNinjaOne);
+                    }
+                    _currentNinjaUser = await _ninjaApi.LookupEndUserAsync(username);
+
+                    // Debug logging for NinjaOne lookup
+                    if (_currentNinjaUser != null)
+                    {
+                        AddStatusMessage(StatusMessageKey.FoundNinjaOneUser, _currentNinjaUser.FullName, _currentNinjaUser.Email);
                     }
                     else
                     {
-                        AddStatusMessage(StatusMessageKey.UserFoundNinjaOneOnly);
+                        AddStatusMessage(StatusMessageKey.NinjaOneUserNotFound, username);
                     }
 
-                    // Search for open tickets for this user (skip for 'kiosk' fallback account)
-                    bool isKioskUser = _currentNinjaUser != null &&
-                                      (_currentNinjaUser.Email.StartsWith("kiosk@", StringComparison.OrdinalIgnoreCase) ||
-                                       _currentNinjaUser.Email.Equals("kiosk", StringComparison.OrdinalIgnoreCase));
-
-                    if (!isKioskUser)
+                    // Check if we found the user in at least one system
+                    if (_currentUser != null || _currentNinjaUser != null)
                     {
-                        await SearchForOpenTicketsAsync();
+                        PopulateUserInfo();
+                        ContinueButton.IsEnabled = true;
+                        UpdateNavigationButtons();
+
+                        // Log what we found
+                        if (_currentUser != null && _currentNinjaUser != null)
+                        {
+                            AddStatusMessage(StatusMessageKey.UserFoundInBoth);
+                        }
+                        else if (_currentUser != null)
+                        {
+                            AddStatusMessage(StatusMessageKey.UserFoundPowerSchoolOnly);
+                        }
+                        else
+                        {
+                            AddStatusMessage(StatusMessageKey.UserFoundNinjaOneOnly);
+                        }
+
+                        // Search for open tickets for this user (skip for 'kiosk' fallback account)
+                        bool isKioskUser = _currentNinjaUser != null &&
+                                          (_currentNinjaUser.Email.StartsWith("kiosk@", StringComparison.OrdinalIgnoreCase) ||
+                                           _currentNinjaUser.Email.Equals("kiosk", StringComparison.OrdinalIgnoreCase));
+
+                        if (!isKioskUser)
+                        {
+                            await SearchForOpenTicketsAsync();
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine("[OpenTickets] Skipping ticket search for kiosk user - fallback account cannot continue tickets");
+                        }
                     }
                     else
                     {
-                        System.Diagnostics.Debug.WriteLine("[OpenTickets] Skipping ticket search for kiosk user - fallback account cannot continue tickets");
+                        await ShowMessageDialog(PopupMessageKey.UserNotFound);
+                        AddStatusMessage(StatusMessageKey.UserNotFoundInEither, username);
+                        ClearUserInfo();
+                        ContinueButton.IsEnabled = false;
+                        UpdateNavigationButtons();
                     }
                 }
-                else
+                catch (Exception ex)
                 {
-                    await ShowMessageDialog(PopupMessageKey.UserNotFound);
-                    AddStatusMessage(StatusMessageKey.UserNotFoundInEither, username);
+                    await ShowMessageDialog(PopupMessageKey.SearchError, $"Failed to search:\n{ex.Message}");
+                    AddStatusMessage(StatusMessageKey.ErrorDuringSearch, ex.Message);
                     ClearUserInfo();
-                    ContinueButton.IsEnabled = false;
-                    UpdateNavigationButtons();
+                }
+                finally
+                {
+                    _isSearching = false;
+                    SearchButton.IsEnabled = true;
+
+                    // Update username cache after search (whether successful or not)
+                    _ = UpdateUsernameCacheAsync();
                 }
             }
             catch (Exception ex)
             {
-                await ShowMessageDialog(PopupMessageKey.SearchError, $"Failed to search:\n{ex.Message}");
-                AddStatusMessage(StatusMessageKey.ErrorDuringSearch, ex.Message);
-                ClearUserInfo();
-            }
-            finally
-            {
-                _isSearching = false;
-                SearchButton.IsEnabled = true;
-
-                // Update username cache after search (whether successful or not)
-                _ = UpdateUsernameCacheAsync();
+                HandleUnexpectedError(ex, "user search");
             }
         }
 
@@ -633,24 +652,23 @@ namespace ITTicketingKiosk
 
                         if (isMatch)
                         {
-                            // Prevent showing dialog twice
-                            if (_isTicketDialogShowing)
+                            // Prevent showing dialog twice using semaphore
+                            if (!await _dialogSemaphore.WaitAsync(0))
                             {
                                 System.Diagnostics.Debug.WriteLine($"[OpenTickets] Dialog already showing, skipping duplicate");
                                 return;
                             }
 
-                            // Extract ticket ID and subject
-                            int ticketId = Convert.ToInt32(ticket["id"]);
-                            string ticketSubject = ticket.ContainsKey("summary") ? ticket["summary"]?.ToString() ?? "No Subject" : "No Subject";
-
-                            System.Diagnostics.Debug.WriteLine($"[OpenTickets] ✓ MATCH FOUND! Ticket #{ticketId}: {ticketSubject}");
-                            AddStatusMessage(StatusMessageKey.FoundOpenTicket, ticketId, ticketSubject);
-
-                            // Show dialog to ask user what they want to do
-                            _isTicketDialogShowing = true;
                             try
                             {
+                                // Extract ticket ID and subject
+                                int ticketId = Convert.ToInt32(ticket["id"]);
+                                string ticketSubject = ticket.ContainsKey("summary") ? ticket["summary"]?.ToString() ?? "No Subject" : "No Subject";
+
+                                System.Diagnostics.Debug.WriteLine($"[OpenTickets] ✓ MATCH FOUND! Ticket #{ticketId}: {ticketSubject}");
+                                AddStatusMessage(StatusMessageKey.FoundOpenTicket, ticketId, ticketSubject);
+
+                                // Show dialog to ask user what they want to do
                                 var dialog = new TicketChoiceDialog(ticketId, ticketSubject);
                                 bool? result = dialog.ShowDialog();
 
@@ -668,7 +686,7 @@ namespace ITTicketingKiosk
                             }
                             finally
                             {
-                                _isTicketDialogShowing = false;
+                                _dialogSemaphore.Release();
                             }
 
                             // Only process the first matching ticket
@@ -1056,166 +1074,180 @@ namespace ITTicketingKiosk
 
         private async void SubmitButton_Click(object sender, RoutedEventArgs e)
         {
-            if (!ValidateForm())
-                return;
-
-            // Disable button immediately to prevent double-submission
-            SubmitButton.IsEnabled = false;
-            AddStatusMessage(StatusMessageKey.SubmittingTicket);
-
             try
             {
-                // Determine requester information - use kiosk fallback if needed
-                string requesterUid = null;
-                string requesterName = null;
-                string requesterEmail = null;
+                if (!ValidateForm())
+                    return;
 
-                if (_currentNinjaUser != null && !string.IsNullOrEmpty(_currentNinjaUser.Uid))
+                // Disable button immediately to prevent double-submission
+                SubmitButton.IsEnabled = false;
+                AddStatusMessage(StatusMessageKey.SubmittingTicket);
+
+                try
                 {
-                    // Normal case: use the actual user from NinjaOne
-                    requesterUid = _currentNinjaUser.Uid;
-                    requesterName = _currentNinjaUser.FullName;
-                    requesterEmail = _currentNinjaUser.Email;
-                }
-                else if (_currentUser != null && _kioskUser != null && !string.IsNullOrEmpty(_kioskUser.Uid))
-                {
-                    // Fallback case: user exists in PowerSchool but not NinjaOne
-                    // Use kiosk account for ticket submission
-                    requesterUid = _kioskUser.Uid;
-                    requesterName = _kioskUser.FullName;
-                    requesterEmail = _kioskUser.Email;
-                    AddStatusMessage(StatusMessageKey.UsingKioskFallback, _currentUser.Username);
-                }
-                else
-                {
-                    throw new Exception("No NinjaOne user information available. User must exist in NinjaOne to create tickets.");
-                }
+                    // Determine requester information - use kiosk fallback if needed
+                    string requesterUid = null;
+                    string requesterName = null;
+                    string requesterEmail = null;
 
-                // Get device - handle both selected item and custom text entry
-                string deviceValue = string.Empty;
-                if (DeviceComboBox.SelectedItem != null)
-                {
-                    deviceValue = DeviceComboBox.SelectedItem.ToString();
-                }
-                else if (!string.IsNullOrWhiteSpace(DeviceComboBox.Text))
-                {
-                    // User typed custom device name
-                    deviceValue = DeviceComboBox.Text.Trim();
-                }
-
-                // Get selected school affiliation
-                string schoolAffiliation = string.Empty;
-                if (SchoolAffiliationComboBox.SelectedItem != null)
-                {
-                    schoolAffiliation = SchoolAffiliationComboBox.SelectedItem.ToString() ?? string.Empty;
-                }
-
-                // Description is just the user's text - capitalize first letter
-                string description = CapitalizeFirst(DescriptionTextBox.Text.Trim());
-
-                // Get subject and capitalize first letter
-                string subject = CapitalizeFirst(SubjectTextBox.Text.Trim());
-
-                // Create ticket using proper API structure with custom fields
-                var ticket = await _ninjaApi.CreateTicketAsync(
-                    subject: subject,
-                    body: description,
-                    requesterUid: requesterUid,
-                    requesterName: requesterName,
-                    requesterEmail: requesterEmail,
-                    schoolAffiliation: schoolAffiliation,
-                    deviceName: deviceValue,
-                    studentNumber: _currentUser?.StudentNumber,
-                    teacherNumber: _currentUser?.TeacherNumber
-                );
-
-                string ticketId = ticket.ContainsKey("id") ? ticket["id"].ToString() : "N/A";
-                await ShowMessageDialog(PopupMessageKey.TicketSuccess, ticketId);
-                AddStatusMessage(StatusMessageKey.TicketCreatedSuccessfully, ticketId, requesterName);
-
-                // Print ticket receipt if enabled
-                if (ReceiptPrinter.IsEnabled())
-                {
-                    string deviceForPrint = DeviceComboBox.SelectedItem?.ToString() ?? "Not specified";
-                    bool printSuccess = ReceiptPrinter.PrintTicketNumber(ticketId, deviceForPrint, subject);
-                    if (printSuccess)
+                    if (_currentNinjaUser != null && !string.IsNullOrEmpty(_currentNinjaUser.Uid))
                     {
-                        AddStatusMessage(StatusMessageKey.TicketReceiptPrinted);
+                        // Normal case: use the actual user from NinjaOne
+                        requesterUid = _currentNinjaUser.Uid;
+                        requesterName = _currentNinjaUser.FullName;
+                        requesterEmail = _currentNinjaUser.Email;
+                    }
+                    else if (_currentUser != null && _kioskUser != null && !string.IsNullOrEmpty(_kioskUser.Uid))
+                    {
+                        // Fallback case: user exists in PowerSchool but not NinjaOne
+                        // Use kiosk account for ticket submission
+                        requesterUid = _kioskUser.Uid;
+                        requesterName = _kioskUser.FullName;
+                        requesterEmail = _kioskUser.Email;
+                        AddStatusMessage(StatusMessageKey.UsingKioskFallback, _currentUser.Username);
                     }
                     else
                     {
-                        AddStatusMessage(StatusMessageKey.FailedToPrintReceipt);
+                        throw new Exception("No NinjaOne user information available. User must exist in NinjaOne to create tickets.");
+                    }
+
+                    // Get device - handle both selected item and custom text entry
+                    string deviceValue = string.Empty;
+                    if (DeviceComboBox.SelectedItem != null)
+                    {
+                        deviceValue = DeviceComboBox.SelectedItem.ToString();
+                    }
+                    else if (!string.IsNullOrWhiteSpace(DeviceComboBox.Text))
+                    {
+                        // User typed custom device name
+                        deviceValue = DeviceComboBox.Text.Trim();
+                    }
+
+                    // Get selected school affiliation
+                    string schoolAffiliation = string.Empty;
+                    if (SchoolAffiliationComboBox.SelectedItem != null)
+                    {
+                        schoolAffiliation = SchoolAffiliationComboBox.SelectedItem.ToString() ?? string.Empty;
+                    }
+
+                    // Description is just the user's text - capitalize first letter
+                    string description = CapitalizeFirst(DescriptionTextBox.Text.Trim());
+
+                    // Get subject and capitalize first letter
+                    string subject = CapitalizeFirst(SubjectTextBox.Text.Trim());
+
+                    // Create ticket using proper API structure with custom fields
+                    var ticket = await _ninjaApi.CreateTicketAsync(
+                        subject: subject,
+                        body: description,
+                        requesterUid: requesterUid,
+                        requesterName: requesterName,
+                        requesterEmail: requesterEmail,
+                        schoolAffiliation: schoolAffiliation,
+                        deviceName: deviceValue,
+                        studentNumber: _currentUser?.StudentNumber,
+                        teacherNumber: _currentUser?.TeacherNumber
+                    );
+
+                    string ticketId = ticket.ContainsKey("id") ? ticket["id"].ToString() : "N/A";
+                    await ShowMessageDialog(PopupMessageKey.TicketSuccess, ticketId);
+                    AddStatusMessage(StatusMessageKey.TicketCreatedSuccessfully, ticketId, requesterName);
+
+                    // Print ticket receipt if enabled
+                    if (ReceiptPrinter.IsEnabled())
+                    {
+                        string deviceForPrint = DeviceComboBox.SelectedItem?.ToString() ?? "Not specified";
+                        bool printSuccess = ReceiptPrinter.PrintTicketNumber(ticketId, deviceForPrint, subject);
+                        if (printSuccess)
+                        {
+                            AddStatusMessage(StatusMessageKey.TicketReceiptPrinted);
+                        }
+                        else
+                        {
+                            AddStatusMessage(StatusMessageKey.FailedToPrintReceipt);
+                        }
+                    }
+
+                    ResetForm();
+                    // Button will be re-enabled when user fills out the form again and navigates to page 2
+                }
+                catch (Exception ex)
+                {
+                    // Re-enable button on error so user can retry
+                    SubmitButton.IsEnabled = true;
+
+                    // Check if it's an authentication error
+                    if (ex.Message.Contains("refresh access token") || ex.Message.Contains("Please sign in again"))
+                    {
+                        await ShowMessageDialog(PopupMessageKey.SessionExpired);
+                        ShowAuthOverlay();
+                        AddStatusMessage(StatusMessageKey.SessionExpired);
+                    }
+                    else
+                    {
+                        await ShowMessageDialog(PopupMessageKey.TicketSubmitError, $"Failed to submit ticket:\n{ex.Message}");
+                        AddStatusMessage(StatusMessageKey.ErrorSubmittingTicket, ex.Message);
                     }
                 }
-
-                ResetForm();
-                // Button will be re-enabled when user fills out the form again and navigates to page 2
             }
             catch (Exception ex)
             {
-                // Re-enable button on error so user can retry
-                SubmitButton.IsEnabled = true;
-
-                // Check if it's an authentication error
-                if (ex.Message.Contains("refresh access token") || ex.Message.Contains("Please sign in again"))
-                {
-                    await ShowMessageDialog(PopupMessageKey.SessionExpired);
-                    ShowAuthOverlay();
-                    AddStatusMessage(StatusMessageKey.SessionExpired);
-                }
-                else
-                {
-                    await ShowMessageDialog(PopupMessageKey.TicketSubmitError, $"Failed to submit ticket:\n{ex.Message}");
-                    AddStatusMessage(StatusMessageKey.ErrorSubmittingTicket, ex.Message);
-                }
+                HandleUnexpectedError(ex, "ticket submission");
             }
         }
 
         private async void SubmitCommentButton_Click(object sender, RoutedEventArgs e)
         {
-            if (!ValidateCommentForm())
-                return;
-
-            // Disable button immediately to prevent double-submission
-            SubmitCommentButton.IsEnabled = false;
-            AddStatusMessage(StatusMessageKey.AddingCommentToTicket, _existingTicketId);
-
             try
             {
-                if (!_existingTicketId.HasValue)
+                if (!ValidateCommentForm())
+                    return;
+
+                // Disable button immediately to prevent double-submission
+                SubmitCommentButton.IsEnabled = false;
+                AddStatusMessage(StatusMessageKey.AddingCommentToTicket, _existingTicketId);
+
+                try
                 {
-                    throw new Exception("No existing ticket ID available");
+                    if (!_existingTicketId.HasValue)
+                    {
+                        throw new Exception("No existing ticket ID available");
+                    }
+
+                    // Capitalize first letter of comment
+                    string commentBody = CapitalizeFirst(CommentTextBox.Text.Trim());
+
+                    // Add comment to the existing ticket
+                    var result = await _ninjaApi.AddTicketCommentAsync(_existingTicketId.Value, commentBody);
+
+                    await ShowMessageDialog(PopupMessageKey.CommentSuccess, _existingTicketId.Value);
+                    AddStatusMessage(StatusMessageKey.CommentAddedSuccessfully, _existingTicketId.Value);
+
+                    ResetForm();
+                    // Button will be re-enabled when user fills out the form again
                 }
+                catch (Exception ex)
+                {
+                    // Re-enable button on error so user can retry
+                    SubmitCommentButton.IsEnabled = true;
 
-                // Capitalize first letter of comment
-                string commentBody = CapitalizeFirst(CommentTextBox.Text.Trim());
-
-                // Add comment to the existing ticket
-                var result = await _ninjaApi.AddTicketCommentAsync(_existingTicketId.Value, commentBody);
-
-                await ShowMessageDialog(PopupMessageKey.CommentSuccess, _existingTicketId.Value);
-                AddStatusMessage(StatusMessageKey.CommentAddedSuccessfully, _existingTicketId.Value);
-
-                ResetForm();
-                // Button will be re-enabled when user fills out the form again
+                    // Check if it's an authentication error
+                    if (ex.Message.Contains("refresh access token") || ex.Message.Contains("Please sign in again"))
+                    {
+                        await ShowMessageDialog(PopupMessageKey.SessionExpired);
+                        ShowAuthOverlay();
+                        AddStatusMessage(StatusMessageKey.SessionExpired);
+                    }
+                    else
+                    {
+                        await ShowMessageDialog(PopupMessageKey.CommentSubmitError, $"Failed to add comment:\n{ex.Message}");
+                        AddStatusMessage(StatusMessageKey.ErrorAddingComment, ex.Message);
+                    }
+                }
             }
             catch (Exception ex)
             {
-                // Re-enable button on error so user can retry
-                SubmitCommentButton.IsEnabled = true;
-
-                // Check if it's an authentication error
-                if (ex.Message.Contains("refresh access token") || ex.Message.Contains("Please sign in again"))
-                {
-                    await ShowMessageDialog(PopupMessageKey.SessionExpired);
-                    ShowAuthOverlay();
-                    AddStatusMessage(StatusMessageKey.SessionExpired);
-                }
-                else
-                {
-                    await ShowMessageDialog(PopupMessageKey.CommentSubmitError, $"Failed to add comment:\n{ex.Message}");
-                    AddStatusMessage(StatusMessageKey.ErrorAddingComment, ex.Message);
-                }
+                HandleUnexpectedError(ex, "comment submission");
             }
         }
 
@@ -1384,7 +1416,14 @@ namespace ITTicketingKiosk
         /// </summary>
         private async void SettingsButton_Click(object sender, RoutedEventArgs e)
         {
-            await ShowSettingsDialogAsync(isRequired: false);
+            try
+            {
+                await ShowSettingsDialogAsync(isRequired: false);
+            }
+            catch (Exception ex)
+            {
+                HandleUnexpectedError(ex, "settings");
+            }
         }
 
         /// <summary>
@@ -1733,6 +1772,35 @@ namespace ITTicketingKiosk
             await ShowMessageDialog(title, formattedContent);
         }
 
+        /// <summary>
+        /// Handle unexpected errors in async void methods to prevent application crash
+        /// </summary>
+        private void HandleUnexpectedError(Exception ex, string context = "")
+        {
+            System.Diagnostics.Debug.WriteLine($"[ERROR] Unexpected error in {context}: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[ERROR] Stack trace: {ex.StackTrace}");
+
+            string errorMessage = string.IsNullOrEmpty(context)
+                ? $"An unexpected error occurred:\n\n{ex.Message}"
+                : $"An unexpected error occurred during {context}:\n\n{ex.Message}";
+
+            AddStatusMessage(errorMessage, StatusType.Error);
+
+            try
+            {
+                MessageBox.Show(
+                    errorMessage,
+                    "Unexpected Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+            catch
+            {
+                // If even showing the error dialog fails, just log it
+                System.Diagnostics.Debug.WriteLine("[ERROR] Failed to show error dialog");
+            }
+        }
+
         // Placeholder Event Handlers
         #region Placeholder Management
 
@@ -1854,6 +1922,31 @@ namespace ITTicketingKiosk
         }
 
         #endregion
+
+        /// <summary>
+        /// Dispose pattern implementation for proper resource cleanup
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    // Dispose managed resources
+                    _psApi?.Dispose();
+                    _ninjaApi?.Dispose();
+                    _dialogSemaphore?.Dispose();
+                    _oauthCancellationTokenSource?.Dispose();
+                }
+                _disposed = true;
+            }
+        }
     }
 
     // Data Models

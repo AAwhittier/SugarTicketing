@@ -81,12 +81,13 @@ namespace ITTicketingKiosk
     /// <summary>
     /// Handles PowerSchool API authentication and requests using OAuth2 client credentials flow
     /// </summary>
-    public class PowerSchoolAPI
+    public class PowerSchoolAPI : IDisposable
     {
         private readonly string _baseUrl;
         private readonly string _clientId;
         private readonly string _clientSecret;
         private readonly HttpClient _httpClient;
+        private bool _disposed = false;
 
         private string _accessToken;
         private DateTime _tokenExpiry;
@@ -100,6 +101,28 @@ namespace ITTicketingKiosk
             {
                 Timeout = TimeSpan.FromSeconds(10)
             };
+        }
+
+        /// <summary>
+        /// Dispose pattern implementation
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    // Dispose managed resources
+                    _httpClient?.Dispose();
+                }
+                _disposed = true;
+            }
         }
 
         /// <summary>
@@ -341,13 +364,14 @@ namespace ITTicketingKiosk
     /// <summary>
     /// Handles NinjaOne API authentication using OAuth2 Authorization Code flow with PKCE and refresh tokens
     /// </summary>
-    public class NinjaOneAPI
+    public class NinjaOneAPI : IDisposable
     {
         private readonly string _baseUrl;
         private readonly string _clientId;
         private readonly string _clientSecret;
         private readonly string _organizationId;
         private readonly HttpClient _httpClient;
+        private bool _disposed = false;
 
         private string _accessToken;
         private string _refreshToken;
@@ -365,6 +389,28 @@ namespace ITTicketingKiosk
             {
                 Timeout = TimeSpan.FromSeconds(10)
             };
+        }
+
+        /// <summary>
+        /// Dispose pattern implementation
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    // Dispose managed resources
+                    _httpClient?.Dispose();
+                }
+                _disposed = true;
+            }
         }
 
         /// <summary>
