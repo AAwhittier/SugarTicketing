@@ -1022,7 +1022,6 @@ namespace ITTicketingKiosk
                 }
 
                 var result = JsonConvert.DeserializeObject<Dictionary<string, object>>(responseBody);
-                System.Diagnostics.Debug.WriteLine($"[NinjaOne] Deserialized result keys: {string.Join(", ", result?.Keys ?? new string[0])}");
 
                 // Extract the data array from the response (NinjaOne uses "data" not "results")
                 if (result != null && result.ContainsKey("data"))

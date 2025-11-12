@@ -42,7 +42,7 @@ namespace ITTicketingKiosk
             Left = (screenWidth - ActualWidth) / 2;
 
             // Position near top (100 pixels from top)
-            Top = 100;
+            Top = 50;
         }
 
         private void ContinueTicketButton_Click(object sender, RoutedEventArgs e)

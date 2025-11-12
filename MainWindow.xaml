@@ -511,7 +511,7 @@
                                 </StackPanel>
                             </Border>
 
-                            <!-- Comment -->
+                            <!-- Comment box when editing ticket -->
                             <Grid Margin="0,0,0,15">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
@@ -531,7 +531,7 @@
                                              AcceptsReturn="True"
                                              VerticalScrollBarVisibility="Auto"
                                              VerticalContentAlignment="Top"
-                                             Height="220"
+                                             Height="190"
                                              GotFocus="CommentTextBox_GotFocus"
                                              LostFocus="CommentTextBox_LostFocus"
                                              TextChanged="CommentTextBox_TextChanged"/>

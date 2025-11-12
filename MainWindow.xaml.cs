@@ -1032,7 +1032,7 @@ namespace ITTicketingKiosk
         }
 
         /// <summary>
-        /// Capitalizes the first letter of a string (type-safe)
+        /// Capitalizes the first letter of a string
         /// </summary>
         private string CapitalizeFirst(string input)
         {
@@ -1530,7 +1530,7 @@ namespace ITTicketingKiosk
             {
                 AddStatusMessage(StatusMessageKey.ErrorShowingSettings, ex.Message);
 
-                // If settings dialog fails to show during required setup, we're stuck
+                // If settings dialog fails to show during required setup, the app needs relaunched
                 if (isRequired)
                 {
                     await ShowMessageDialog(PopupMessageKey.CriticalError, $"Failed to display settings dialog: {ex.Message}\n\nThe application cannot continue without credentials.");
@@ -1600,18 +1600,8 @@ namespace ITTicketingKiosk
                 DeviceComboBox.SelectedIndex = -1; // Clear the selection immediately
                 DeviceComboBox.Text = "Write In"; // Keep placeholder text
 
-                // Focus the text input portion of the ComboBox
-                // Need to wait for visual tree to update after making it editable
-                Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    // Find the TextBox inside the ComboBox and focus it
-                    var textBox = FindVisualChild<TextBox>(DeviceComboBox);
-                    if (textBox != null)
-                    {
-                        textBox.Focus();
-                        textBox.SelectAll(); // Select "Write In" text so user can type immediately
-                    }
-                }), System.Windows.Threading.DispatcherPriority.Loaded);
+                // Focus the ComboBox for typing
+                DeviceComboBox.Focus();
 
                 AddStatusMessage(StatusMessageKey.EnterCustomDeviceName);
                 DevicePlaceholder.Visibility = Visibility.Collapsed;
