@@ -5,9 +5,10 @@
     Title="Open Ticket Found"
     Width="550"
     SizeToContent="Height"
-    WindowStartupLocation="CenterScreen"
+    WindowStartupLocation="Manual"
     Background="White"
-    ResizeMode="NoResize">
+    ResizeMode="NoResize"
+    Loaded="Window_Loaded">
 
     <Grid>
         <Grid.RowDefinitions>
