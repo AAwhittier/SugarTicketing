@@ -963,6 +963,7 @@ namespace ITTicketingKiosk
                 "874" => "VVHS - Valley View",
                 "1483" => "SSO - Online",
                 "10000" => "DIS - District",
+                "999999" => "Graduated",
                 _ => schoolId  // Just return the school ID number without "School ID:" prefix
             };
         }
@@ -980,7 +981,8 @@ namespace ITTicketingKiosk
                 "KIS",     // 225
                 "VVHS",    // 874
                 "SSO",     // 1483
-                "DIS"      // 10000
+                "DIS",     // 10000
+                "Graduated" // 999999
             };
 
             SchoolAffiliationComboBox.ItemsSource = allSchools;
