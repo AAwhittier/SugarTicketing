@@ -1600,8 +1600,18 @@ namespace ITTicketingKiosk
                 DeviceComboBox.SelectedIndex = -1; // Clear the selection immediately
                 DeviceComboBox.Text = "Write In"; // Keep placeholder text
 
-                // Focus the ComboBox so user can start typing
-                DeviceComboBox.Focus();
+                // Focus the text input portion of the ComboBox
+                // Need to wait for visual tree to update after making it editable
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    // Find the TextBox inside the ComboBox and focus it
+                    var textBox = FindVisualChild<TextBox>(DeviceComboBox);
+                    if (textBox != null)
+                    {
+                        textBox.Focus();
+                        textBox.SelectAll(); // Select "Write In" text so user can type immediately
+                    }
+                }), System.Windows.Threading.DispatcherPriority.Loaded);
 
                 AddStatusMessage(StatusMessageKey.EnterCustomDeviceName);
                 DevicePlaceholder.Visibility = Visibility.Collapsed;
@@ -1922,6 +1932,29 @@ namespace ITTicketingKiosk
         }
 
         #endregion
+
+        /// <summary>
+        /// Helper method to find a child element in the visual tree
+        /// </summary>
+        private static T FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+        {
+            if (parent == null)
+                return null;
+
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+
+                if (child is T typedChild)
+                    return typedChild;
+
+                var childOfChild = FindVisualChild<T>(child);
+                if (childOfChild != null)
+                    return childOfChild;
+            }
+
+            return null;
+        }
 
         /// <summary>
         /// Dispose pattern implementation for proper resource cleanup

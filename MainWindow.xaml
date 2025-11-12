@@ -284,7 +284,35 @@
                                                   Height="40"
                                                   SelectionChanged="SchoolAffiliationComboBox_SelectionChanged"
                                                   DropDownOpened="SchoolAffiliationComboBox_DropDownOpened"
-                                                  DropDownClosed="SchoolAffiliationComboBox_DropDownClosed"/>
+                                                  DropDownClosed="SchoolAffiliationComboBox_DropDownClosed">
+                                            <ComboBox.ItemContainerStyle>
+                                                <Style TargetType="ComboBoxItem">
+                                                    <Setter Property="Padding" Value="12,14"/>
+                                                    <Setter Property="MinHeight" Value="48"/>
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="ComboBoxItem">
+                                                                <Border x:Name="Border"
+                                                                        Background="{TemplateBinding Background}"
+                                                                        BorderThickness="0,0,0,1"
+                                                                        BorderBrush="#E0E0E0"
+                                                                        Padding="{TemplateBinding Padding}">
+                                                                    <ContentPresenter/>
+                                                                </Border>
+                                                                <ControlTemplate.Triggers>
+                                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                                        <Setter TargetName="Border" Property="Background" Value="#F0F0F0"/>
+                                                                    </Trigger>
+                                                                    <Trigger Property="IsSelected" Value="True">
+                                                                        <Setter TargetName="Border" Property="Background" Value="#E3F2FD"/>
+                                                                    </Trigger>
+                                                                </ControlTemplate.Triggers>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </Style>
+                                            </ComboBox.ItemContainerStyle>
+                                        </ComboBox>
 
                                         <!-- Placeholder Text -->
                                         <TextBlock x:Name="SchoolAffiliationPlaceholder"
@@ -322,7 +350,35 @@
                                                   SelectionChanged="DeviceComboBox_SelectionChanged"
                                                   PreviewKeyDown="DeviceComboBox_PreviewKeyDown"
                                                   DropDownOpened="DeviceComboBox_DropDownOpened"
-                                                  DropDownClosed="DeviceComboBox_DropDownClosed"/>
+                                                  DropDownClosed="DeviceComboBox_DropDownClosed">
+                                            <ComboBox.ItemContainerStyle>
+                                                <Style TargetType="ComboBoxItem">
+                                                    <Setter Property="Padding" Value="12,14"/>
+                                                    <Setter Property="MinHeight" Value="48"/>
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="ComboBoxItem">
+                                                                <Border x:Name="Border"
+                                                                        Background="{TemplateBinding Background}"
+                                                                        BorderThickness="0,0,0,1"
+                                                                        BorderBrush="#E0E0E0"
+                                                                        Padding="{TemplateBinding Padding}">
+                                                                    <ContentPresenter/>
+                                                                </Border>
+                                                                <ControlTemplate.Triggers>
+                                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                                        <Setter TargetName="Border" Property="Background" Value="#F0F0F0"/>
+                                                                    </Trigger>
+                                                                    <Trigger Property="IsSelected" Value="True">
+                                                                        <Setter TargetName="Border" Property="Background" Value="#E3F2FD"/>
+                                                                    </Trigger>
+                                                                </ControlTemplate.Triggers>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </Style>
+                                            </ComboBox.ItemContainerStyle>
+                                        </ComboBox>
 
                                         <!-- Placeholder Text -->
                                         <TextBlock x:Name="DevicePlaceholder"
