@@ -531,8 +531,19 @@ namespace ITTicketingKiosk
                         AddStatusMessage(StatusMessageKey.UserFoundNinjaOneOnly);
                     }
 
-                    // Search for open tickets for this user
-                    await SearchForOpenTicketsAsync();
+                    // Search for open tickets for this user (skip for 'kiosk' fallback account)
+                    bool isKioskUser = _currentNinjaUser != null &&
+                                      (_currentNinjaUser.Email.StartsWith("kiosk@", StringComparison.OrdinalIgnoreCase) ||
+                                       _currentNinjaUser.Email.Equals("kiosk", StringComparison.OrdinalIgnoreCase));
+
+                    if (!isKioskUser)
+                    {
+                        await SearchForOpenTicketsAsync();
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("[OpenTickets] Skipping ticket search for kiosk user - fallback account cannot continue tickets");
+                    }
                 }
                 else
                 {
@@ -1000,6 +1011,26 @@ namespace ITTicketingKiosk
             return input;
         }
 
+        /// <summary>
+        /// Capitalizes the first letter of a string (type-safe)
+        /// </summary>
+        private string CapitalizeFirst(string input)
+        {
+            if (string.IsNullOrEmpty(input))
+                return input;
+
+            // Handle strings that are only whitespace
+            if (string.IsNullOrWhiteSpace(input))
+                return input;
+
+            string trimmed = input.Trim();
+            if (trimmed.Length == 0)
+                return input;
+
+            // Capitalize first character and concatenate the rest
+            return char.ToUpper(trimmed[0]) + trimmed.Substring(1);
+        }
+
         private void ClearUserInfo()
         {
             NameLabel.Text = string.Empty;
@@ -1077,12 +1108,15 @@ namespace ITTicketingKiosk
                     schoolAffiliation = SchoolAffiliationComboBox.SelectedItem.ToString() ?? string.Empty;
                 }
 
-                // Description is just the user's text - no prefixes needed
-                string description = DescriptionTextBox.Text.Trim();
+                // Description is just the user's text - capitalize first letter
+                string description = CapitalizeFirst(DescriptionTextBox.Text.Trim());
+
+                // Get subject and capitalize first letter
+                string subject = CapitalizeFirst(SubjectTextBox.Text.Trim());
 
                 // Create ticket using proper API structure with custom fields
                 var ticket = await _ninjaApi.CreateTicketAsync(
-                    subject: SubjectTextBox.Text.Trim(),
+                    subject: subject,
                     body: description,
                     requesterUid: requesterUid,
                     requesterName: requesterName,
@@ -1101,7 +1135,7 @@ namespace ITTicketingKiosk
                 if (ReceiptPrinter.IsEnabled())
                 {
                     string deviceForPrint = DeviceComboBox.SelectedItem?.ToString() ?? "Not specified";
-                    bool printSuccess = ReceiptPrinter.PrintTicketNumber(ticketId, deviceForPrint, SubjectTextBox.Text.Trim());
+                    bool printSuccess = ReceiptPrinter.PrintTicketNumber(ticketId, deviceForPrint, subject);
                     if (printSuccess)
                     {
                         AddStatusMessage(StatusMessageKey.TicketReceiptPrinted);
@@ -1151,7 +1185,8 @@ namespace ITTicketingKiosk
                     throw new Exception("No existing ticket ID available");
                 }
 
-                string commentBody = CommentTextBox.Text.Trim();
+                // Capitalize first letter of comment
+                string commentBody = CapitalizeFirst(CommentTextBox.Text.Trim());
 
                 // Add comment to the existing ticket
                 var result = await _ninjaApi.AddTicketCommentAsync(_existingTicketId.Value, commentBody);

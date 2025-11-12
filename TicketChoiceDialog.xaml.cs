@@ -32,6 +32,19 @@ namespace ITTicketingKiosk
             TicketSubjectTextBlock.Text = ticketSubject;
         }
 
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            // Position dialog at top-center of screen
+            var screenWidth = SystemParameters.PrimaryScreenWidth;
+            var screenHeight = SystemParameters.PrimaryScreenHeight;
+
+            // Center horizontally
+            Left = (screenWidth - ActualWidth) / 2;
+
+            // Position near top (100 pixels from top)
+            Top = 100;
+        }
+
         private void ContinueTicketButton_Click(object sender, RoutedEventArgs e)
         {
             Choice = TicketChoice.Continue;
