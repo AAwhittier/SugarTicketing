@@ -802,6 +802,8 @@ namespace ITTicketingKiosk
                 "KIS" => 7,    // Kershaw
                 "VVHS" => 9,   // Valley View High School
                 "SSO" => 10,   // Sugar Salem Online
+                "DIS" => null, // District - no specific location
+                "Graduated" => null, // Graduated - no specific location
                 _ => null      // No location if school not matched
             };
 
