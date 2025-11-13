@@ -59,7 +59,7 @@
                         Grid.Row="0"
                         Grid.RowSpan="3"
                         Style="{StaticResource InsetPanelStyle}"
-                        Margin="20,10,10,20"
+                        Margin="20,10,10,15"
                         Height="580"
                         VerticalAlignment="Top">
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -77,22 +77,17 @@
                                 <TextBlock Text="Click the 'Search' button to find your information and devices." 
                                            Style="{StaticResource InstructionBodyStyle}"/>
 
-                                <TextBlock Text="3. Select School" 
+                                <TextBlock Text="3. Select School &amp; Device" 
                                            Style="{StaticResource InstructionTitleStyle}"/>
-                                <TextBlock Text="Choose your school affiliation from the dropdown. This will be automatically filled if found in the system." 
+                                <TextBlock Text="Choose your school and device from the dropdown menus. If your device is not listed select 'Write In' and enter a custom device." 
                                            Style="{StaticResource InstructionBodyStyle}"/>
 
-                                <TextBlock Text="4. Select Device" 
+                                <TextBlock Text="4. Describe Issue" 
                                            Style="{StaticResource InstructionTitleStyle}"/>
-                                <TextBlock Text="Choose your device from the dropdown, or select 'Write In' to enter a custom device name." 
+                                <TextBlock Text="Click Continue, then enter a brief subject and description of the issue." 
                                            Style="{StaticResource InstructionBodyStyle}"/>
 
-                                <TextBlock Text="5. Describe Issue" 
-                                           Style="{StaticResource InstructionTitleStyle}"/>
-                                <TextBlock Text="Click Continue, then enter a subject (minimum 4 characters) and detailed description of the problem." 
-                                           Style="{StaticResource InstructionBodyStyle}"/>
-
-                                <TextBlock Text="6. Submit" 
+                                <TextBlock Text="5. Submit" 
                                            Style="{StaticResource InstructionTitleStyle}"/>
                                 <TextBlock Text="Click 'Submit Ticket' to send your request to IT support." 
                                            Style="{StaticResource InstructionBodyStyle}"/>
