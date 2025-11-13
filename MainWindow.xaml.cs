@@ -1165,7 +1165,17 @@ namespace ITTicketingKiosk
                     bool receiptPrinted = false;
                     if (ReceiptPrinter.IsEnabled())
                     {
-                        string deviceForPrint = DeviceComboBox.SelectedItem?.ToString() ?? "Not specified";
+                        // Get device for printing - handle both selected item and custom text entry
+                        string deviceForPrint = "Not specified";
+                        if (DeviceComboBox.SelectedItem != null)
+                        {
+                            deviceForPrint = DeviceComboBox.SelectedItem.ToString();
+                        }
+                        else if (!string.IsNullOrWhiteSpace(DeviceComboBox.Text))
+                        {
+                            deviceForPrint = DeviceComboBox.Text.Trim();
+                        }
+
                         receiptPrinted = ReceiptPrinter.PrintTicketNumber(ticketId, deviceForPrint, subject, requesterName);
                         if (receiptPrinted)
                         {
@@ -1715,7 +1725,9 @@ namespace ITTicketingKiosk
                 // OR test mode is enabled
 
                 bool schoolSelected = SchoolAffiliationComboBox.SelectedItem != null;
-                bool deviceSelected = DeviceComboBox.SelectedItem != null || !string.IsNullOrWhiteSpace(DeviceComboBox.Text);
+                bool deviceSelected = DeviceComboBox.SelectedItem != null ||
+                                     (!string.IsNullOrWhiteSpace(DeviceComboBox.Text) &&
+                                      DeviceComboBox.Text != "Write In");
 
                 bool canContinue = (schoolSelected && deviceSelected) || _testModeEnabled;
 
