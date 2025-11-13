@@ -1678,18 +1678,6 @@ namespace ITTicketingKiosk
             }
         }
 
-        /// <summary>
-        /// Handle text changes in device ComboBox to update navigation buttons in real-time
-        /// </summary>
-        private void DeviceComboBox_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            // Update continue button state when user types in write-in mode
-            if (_isDeviceWriteInMode && DeviceComboBox.IsEditable)
-            {
-                UpdateNavigationButtons();
-            }
-        }
-
         private void NavigateToPage(int pageNumber)
         {
             _currentPage = pageNumber;

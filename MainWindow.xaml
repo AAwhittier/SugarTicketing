@@ -344,7 +344,6 @@
                                                   StaysOpenOnEdit="True"
                                                   SelectionChanged="DeviceComboBox_SelectionChanged"
                                                   PreviewKeyDown="DeviceComboBox_PreviewKeyDown"
-                                                  TextChanged="DeviceComboBox_TextChanged"
                                                   DropDownOpened="DeviceComboBox_DropDownOpened"
                                                   DropDownClosed="DeviceComboBox_DropDownClosed">
                                             <ComboBox.ItemContainerStyle>
