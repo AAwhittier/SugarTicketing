@@ -22,6 +22,7 @@ namespace ITTicketingKiosk
             public string TicketNumber { get; set; } = string.Empty;
             public string Device { get; set; } = string.Empty;
             public string Subject { get; set; } = string.Empty;
+            public string StudentName { get; set; } = string.Empty;
             public string Timestamp { get; set; } = string.Empty;
         }
 
@@ -39,8 +40,9 @@ namespace ITTicketingKiosk
         /// <param name="ticketNumber">The ticket number to print</param>
         /// <param name="device">The device name/number</param>
         /// <param name="subject">The ticket subject</param>
+        /// <param name="studentName">The student name</param>
         /// <returns>True if print was successful, false otherwise</returns>
-        public static bool PrintTicketNumber(string ticketNumber, string device, string subject)
+        public static bool PrintTicketNumber(string ticketNumber, string device, string subject, string studentName = null)
         {
             if (!IsEnabled())
             {
@@ -55,7 +57,18 @@ namespace ITTicketingKiosk
                 _printData.Value.TicketNumber = ticketNumber;
                 _printData.Value.Device = device ?? "Not specified";
                 _printData.Value.Subject = subject;
-                _printData.Value.Timestamp = DateTime.Now.ToString("MM/dd/yyyy hh:mm tt");
+                _printData.Value.StudentName = studentName ?? string.Empty;
+
+                // Format timestamp with student name if provided
+                string timestamp = DateTime.Now.ToString("MM/dd/yyyy hh:mm tt");
+                if (!string.IsNullOrEmpty(studentName))
+                {
+                    _printData.Value.Timestamp = $"{studentName} @ {timestamp}";
+                }
+                else
+                {
+                    _printData.Value.Timestamp = timestamp;
+                }
 
                 // Create print document
                 printDoc = new PrintDocument();

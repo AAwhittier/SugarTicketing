@@ -1159,15 +1159,15 @@ namespace ITTicketingKiosk
                     );
 
                     string ticketId = ticket.ContainsKey("id") ? ticket["id"].ToString() : "N/A";
-                    await ShowMessageDialog(PopupMessageKey.TicketSuccess, ticketId);
                     AddStatusMessage(StatusMessageKey.TicketCreatedSuccessfully, ticketId, requesterName);
 
-                    // Print ticket receipt if enabled
+                    // Print ticket receipt if enabled (BEFORE showing the dialog)
+                    bool receiptPrinted = false;
                     if (ReceiptPrinter.IsEnabled())
                     {
                         string deviceForPrint = DeviceComboBox.SelectedItem?.ToString() ?? "Not specified";
-                        bool printSuccess = ReceiptPrinter.PrintTicketNumber(ticketId, deviceForPrint, subject);
-                        if (printSuccess)
+                        receiptPrinted = ReceiptPrinter.PrintTicketNumber(ticketId, deviceForPrint, subject, requesterName);
+                        if (receiptPrinted)
                         {
                             AddStatusMessage(StatusMessageKey.TicketReceiptPrinted);
                         }
@@ -1176,6 +1176,9 @@ namespace ITTicketingKiosk
                             AddStatusMessage(StatusMessageKey.FailedToPrintReceipt);
                         }
                     }
+
+                    // Show custom success dialog (AFTER printing)
+                    await ShowTicketSuccessDialog(ticketId, receiptPrinted);
 
                     ResetForm();
                     // Button will be re-enabled when user fills out the form again and navigates to page 2
@@ -1779,6 +1782,21 @@ namespace ITTicketingKiosk
             var (title, content) = MessageService.GetPopupMessage(key);
             string formattedContent = args.Length > 0 ? string.Format(content, args) : content;
             await ShowMessageDialog(title, formattedContent);
+        }
+
+        /// <summary>
+        /// Show custom ticket success dialog
+        /// </summary>
+        private async Task ShowTicketSuccessDialog(string ticketId, bool receiptPrinted)
+        {
+            await Dispatcher.InvokeAsync(() =>
+            {
+                var dialog = new TicketSuccessDialog(ticketId, receiptPrinted)
+                {
+                    Owner = this
+                };
+                dialog.ShowDialog();
+            });
         }
 
         /// <summary>
