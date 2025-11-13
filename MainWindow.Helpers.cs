@@ -364,6 +364,11 @@ namespace ITTicketingKiosk
             SchoolAffiliationComboBox.SelectedIndex = -1;
             DeviceComboBox.ItemsSource = null;
             DeviceComboBox.SelectedIndex = -1;
+
+            // Reset Device ComboBox write-in mode
+            DeviceComboBox.Text = string.Empty;
+            DeviceComboBox.IsEditable = false;
+            _isDeviceWriteInMode = false;
         }
 
         private void ResetForm()
