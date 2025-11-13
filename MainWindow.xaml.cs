@@ -1060,6 +1060,23 @@ namespace ITTicketingKiosk
             return char.ToUpper(trimmed[0]) + trimmed.Substring(1);
         }
 
+        /// <summary>
+        /// Gets the current device value from the DeviceComboBox
+        /// Handles both selected items and custom text entry (write-in mode)
+        /// </summary>
+        private string GetDeviceValue()
+        {
+            if (DeviceComboBox.SelectedItem != null)
+            {
+                return DeviceComboBox.SelectedItem.ToString();
+            }
+            else if (!string.IsNullOrWhiteSpace(DeviceComboBox.Text))
+            {
+                return DeviceComboBox.Text.Trim();
+            }
+            return "Not specified";
+        }
+
         private void ClearUserInfo()
         {
             NameLabel.Text = string.Empty;
@@ -1121,16 +1138,7 @@ namespace ITTicketingKiosk
                     }
 
                     // Get device - handle both selected item and custom text entry
-                    string deviceValue = string.Empty;
-                    if (DeviceComboBox.SelectedItem != null)
-                    {
-                        deviceValue = DeviceComboBox.SelectedItem.ToString();
-                    }
-                    else if (!string.IsNullOrWhiteSpace(DeviceComboBox.Text))
-                    {
-                        // User typed custom device name
-                        deviceValue = DeviceComboBox.Text.Trim();
-                    }
+                    string deviceValue = GetDeviceValue();
 
                     // Get selected school affiliation
                     string schoolAffiliation = string.Empty;
@@ -1165,17 +1173,7 @@ namespace ITTicketingKiosk
                     bool receiptPrinted = false;
                     if (ReceiptPrinter.IsEnabled())
                     {
-                        // Get device for printing - handle both selected item and custom text entry
-                        string deviceForPrint = "Not specified";
-                        if (DeviceComboBox.SelectedItem != null)
-                        {
-                            deviceForPrint = DeviceComboBox.SelectedItem.ToString();
-                        }
-                        else if (!string.IsNullOrWhiteSpace(DeviceComboBox.Text))
-                        {
-                            deviceForPrint = DeviceComboBox.Text.Trim();
-                        }
-
+                        string deviceForPrint = GetDeviceValue();
                         receiptPrinted = ReceiptPrinter.PrintTicketNumber(ticketId, deviceForPrint, subject, requesterName);
                         if (receiptPrinted)
                         {
@@ -1363,7 +1361,8 @@ namespace ITTicketingKiosk
                 return false;
             }
 
-            // Device validation - accept either selected item OR custom text entry (if Write In was selected)
+            // Device validation - require either a selected device OR custom text entry
+            // Accepts: device from list, "Other", or custom write-in device name
             if (DeviceComboBox.SelectedItem == null && string.IsNullOrWhiteSpace(DeviceComboBox.Text) && !_testModeEnabled)
             {
                 _ = ShowMessageDialog(PopupMessageKey.MissingDevice);
@@ -1371,9 +1370,8 @@ namespace ITTicketingKiosk
                 return false;
             }
 
-            // Don't allow "Write In" as the actual device value (either selected or as placeholder text)
-            if (DeviceComboBox.SelectedItem?.ToString() == "Write In" ||
-                DeviceComboBox.Text == "Write In" ||
+            // Validate write-in mode: don't allow placeholder text or empty input
+            if (DeviceComboBox.Text == "Write In" ||
                 (DeviceComboBox.IsEditable && string.IsNullOrWhiteSpace(DeviceComboBox.Text)))
             {
                 _ = ShowMessageDialog(PopupMessageKey.MissingDeviceName);
@@ -1381,7 +1379,7 @@ namespace ITTicketingKiosk
                 return false;
             }
 
-            // If Write In was used, validate minimum 4 and maximum 20 characters
+            // Validate write-in device name length (4-20 characters)
             if (DeviceComboBox.IsEditable && !string.IsNullOrWhiteSpace(DeviceComboBox.Text) && DeviceComboBox.Text != "Write In")
             {
                 if (DeviceComboBox.Text.Trim().Length < 4)
@@ -1677,6 +1675,18 @@ namespace ITTicketingKiosk
                 {
                     DeviceComboBox.Text = string.Empty;
                 }
+            }
+        }
+
+        /// <summary>
+        /// Handle text changes in device ComboBox to update navigation buttons in real-time
+        /// </summary>
+        private void DeviceComboBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            // Update continue button state when user types in write-in mode
+            if (_isDeviceWriteInMode && DeviceComboBox.IsEditable)
+            {
+                UpdateNavigationButtons();
             }
         }
 
