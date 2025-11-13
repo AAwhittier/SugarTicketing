@@ -1726,8 +1726,8 @@ namespace ITTicketingKiosk
 
                 bool schoolSelected = SchoolAffiliationComboBox.SelectedItem != null;
                 bool deviceSelected = DeviceComboBox.SelectedItem != null ||
-                                     (!string.IsNullOrWhiteSpace(DeviceComboBox.Text) &&
-                                      DeviceComboBox.Text != "Write In");
+                                     _isDeviceWriteInMode ||
+                                     !string.IsNullOrWhiteSpace(DeviceComboBox.Text);
 
                 bool canContinue = (schoolSelected && deviceSelected) || _testModeEnabled;
 
