@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using System.Windows;
 
 namespace ITTicketingKiosk
@@ -122,8 +123,52 @@ namespace ITTicketingKiosk
             }
         }
 
-        private void ContinueButton_Click(object sender, RoutedEventArgs e)
+        private async void ContinueButton_Click(object sender, RoutedEventArgs e)
         {
+            // Validate School and Device fields before allowing user to continue
+            // School affiliation validation
+            if (SchoolAffiliationComboBox.SelectedItem == null)
+            {
+                await ShowMessageDialog(PopupMessageKey.MissingSchool);
+                AddStatusMessage(StatusMessageKey.SchoolAffiliationRequired);
+                return;
+            }
+
+            // Device validation - require either a selected device OR custom text entry
+            if (DeviceComboBox.SelectedItem == null && string.IsNullOrWhiteSpace(DeviceComboBox.Text) && !_testModeEnabled)
+            {
+                await ShowMessageDialog(PopupMessageKey.MissingDevice);
+                AddStatusMessage(StatusMessageKey.DeviceSelectionRequired);
+                return;
+            }
+
+            // Validate write-in mode: don't allow placeholder text or empty input
+            if (DeviceComboBox.Text == "Write In" ||
+                (DeviceComboBox.IsEditable && string.IsNullOrWhiteSpace(DeviceComboBox.Text)))
+            {
+                await ShowMessageDialog(PopupMessageKey.MissingDeviceName);
+                AddStatusMessage(StatusMessageKey.DeviceNameRequired);
+                return;
+            }
+
+            // Validate write-in device name length (4-20 characters)
+            if (DeviceComboBox.IsEditable && !string.IsNullOrWhiteSpace(DeviceComboBox.Text) && DeviceComboBox.Text != "Write In")
+            {
+                if (DeviceComboBox.Text.Trim().Length < 4)
+                {
+                    await ShowMessageDialog(PopupMessageKey.DeviceNameTooShort);
+                    AddStatusMessage(StatusMessageKey.DeviceNameTooShortValidation);
+                    return;
+                }
+
+                if (DeviceComboBox.Text.Trim().Length > 20)
+                {
+                    await ShowMessageDialog(PopupMessageKey.DeviceNameTooLong);
+                    AddStatusMessage(StatusMessageKey.DeviceNameTooLongValidation);
+                    return;
+                }
+            }
+
             NavigateToPage(2);
         }
     }
