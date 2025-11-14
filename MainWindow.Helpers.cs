@@ -439,7 +439,11 @@ namespace ITTicketingKiosk
         {
             await Dispatcher.InvokeAsync(() =>
             {
-                MessageBox.Show(content, title, MessageBoxButton.OK, MessageBoxImage.Information);
+                var dialog = new ValidationDialog(title, content)
+                {
+                    Owner = this
+                };
+                dialog.ShowDialog();
             });
         }
 
