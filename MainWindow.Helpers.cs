@@ -14,6 +14,21 @@ namespace ITTicketingKiosk
     /// </summary>
     public partial class MainWindow
     {
+        /// <summary>
+        /// Centralized school information - single source of truth for school IDs, abbreviations, and full names
+        /// </summary>
+        private static readonly Dictionary<string, (string Abbreviation, string FullName)> SchoolInfo = new()
+        {
+            { "147", ("SSHS", "SSHS - High School") },
+            { "226", ("SSJHS", "SSJHS - Junior High") },
+            { "781", ("CES", "CES - Central Elementary") },
+            { "225", ("KIS", "KIS - Kershaw") },
+            { "874", ("VVHS", "VVHS - Valley View") },
+            { "1483", ("SSO", "SSO - Online") },
+            { "10000", ("DIS", "DIS - District") },
+            { "999999", ("Graduated", "Graduated") }
+        };
+
         private void LoadBannerImage()
         {
             try
@@ -259,19 +274,10 @@ namespace ITTicketingKiosk
 
         private string GetSchoolName(string schoolId)
         {
-            // Map school IDs to school names
-            return schoolId switch
-            {
-                "147" => "SSHS - High School",
-                "226" => "SSJHS - Junior High",
-                "781" => "CES - Central Elementary",
-                "225" => "KIS - Kershaw",
-                "874" => "VVHS - Valley View",
-                "1483" => "SSO - Online",
-                "10000" => "DIS - District",
-                "999999" => "Graduated",
-                _ => schoolId  // Just return the school ID number without "School ID:" prefix
-            };
+            // Use centralized SchoolInfo dictionary
+            return SchoolInfo.TryGetValue(schoolId, out var info)
+                ? info.FullName
+                : schoolId;  // Just return the school ID number if not found
         }
 
         /// <summary>
@@ -279,17 +285,10 @@ namespace ITTicketingKiosk
         /// </summary>
         private void ShowAllSchoolOptions()
         {
-            var allSchools = new List<string>
-            {
-                "SSHS",    // 147
-                "SSJHS",   // 226
-                "CES",     // 781
-                "KIS",     // 225
-                "VVHS",    // 874
-                "SSO",     // 1483
-                "DIS",     // 10000
-                "Graduated" // 999999
-            };
+            // Extract abbreviations from centralized SchoolInfo dictionary
+            var allSchools = SchoolInfo.Values
+                .Select(info => info.Abbreviation)
+                .ToList();
 
             SchoolAffiliationComboBox.ItemsSource = allSchools;
             SchoolAffiliationComboBox.SelectedIndex = -1; // No default selection - user must choose
