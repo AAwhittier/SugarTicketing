@@ -269,7 +269,8 @@ namespace ITTicketingKiosk
             deviceList.Add("Write In");
 
             DeviceComboBox.ItemsSource = deviceList;
-            DeviceComboBox.SelectedIndex = -1; // No default selection
+            // Auto-select first device if available
+            DeviceComboBox.SelectedIndex = deviceList.Count > 0 ? 0 : -1;
         }
 
         private string GetSchoolName(string schoolId)
